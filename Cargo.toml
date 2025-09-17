@@ -5,6 +5,7 @@ edition = "2024"
 
 [dependencies]
 bevy = "0.16.1"
+bevy_blendy_cameras = "0.7.0"
 bevy_panorbit_camera = "0.28.0"
 bevy_voxel_plot = "2.1.0"
 pcd-rs = { git = "https://github.com/jerry73204/pcd-rs.git" }
