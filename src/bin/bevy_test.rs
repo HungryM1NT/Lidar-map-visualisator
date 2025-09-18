@@ -24,6 +24,7 @@ use bevy_blendy_cameras::{
 use bevy::ecs::prelude::Resource;
 use bevy::ecs::entity::Entity;
 use bevy::ecs::event::EventWriter;
+use bevy::prelude::*;
 
 #[derive(Resource)]
 struct Scene {
@@ -34,7 +35,7 @@ fn main() {
     App::new()
         .add_plugins((DefaultPlugins, VoxelMaterialPlugin, BlendyCamerasPlugin))
         .add_systems(Startup, voxel_plot_setup)
-        .add_systems(Update, (print_keyboard_event_system, mouse_click_system, switch_camera_controler_system))
+        .add_systems(Update, (cursor, print_keyboard_event_system, mouse_click_system, switch_camera_controler_system))
         .run();
 }
 
@@ -171,4 +172,38 @@ fn switch_camera_controler_system(
             camera_entity: scene.camera_entity,
         });
     }
+}
+
+fn cursor(
+    camera_query: Single<(&Camera, &GlobalTransform)>,
+    windows: Query<&Window>,
+    mut gizmos: Gizmos,
+) {
+    let Ok(windows) = windows.single() else {
+        return;
+    };
+    
+    let (camera, camera_transform) = *camera_query;
+
+    let Some(cursor_position) = windows.cursor_position() else {
+        return;
+    };
+
+    let Ok(ray) = camera.viewport_to_world(camera_transform, cursor_position) else {
+        return;
+    };
+    // println!("{:?}", ray);
+
+    let point = ray.get_point(12.);
+    println!("{:?}", point);
+
+    // Draw a circle just above the ground plane at that position.
+    // gizmos.circle(
+    //     Isometry3d::new(
+    //         point + ground.up() * 0.01,
+    //         Quat::from_rotation_arc(Vec3::Z, ground.up().as_vec3()),
+    //     ),
+    //     0.2,
+    //     Color::WHITE,
+    // );
 }
