@@ -41,7 +41,7 @@ fn main() {
 
 fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let (instances, cube_width, cube_height, cube_depth) =
-        load_pcd_file("assets/binary.pcd");
+        load_pcd_file("assets/ascii.pcd");
 
     let mut instances: Vec<InstanceData> = instances.into_iter().collect();
 
@@ -89,7 +89,7 @@ fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     // ));
     let camera_entity = commands.spawn((
         Camera3d::default() ,
-        Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
+        Transform::from_translation(Vec3::new(0.0, 0., 0.0)),
         OrbitCameraController {
             button_orbit: MouseButton::Left,
             button_pan: MouseButton::Left,
@@ -195,7 +195,7 @@ fn cursor(
     // println!("{:?}", ray);
 
     let point = ray.get_point(12.);
-    println!("{:?}", point);
+    println!("{:?}", ray.direction);
 
     // Draw a circle just above the ground plane at that position.
     // gizmos.circle(
