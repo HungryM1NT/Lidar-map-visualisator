@@ -12,11 +12,10 @@ use bevy::prelude::{ColorToComponents, Commands, Cuboid, Mesh, Mesh3d, ResMut, T
 use bevy::render::view::NoFrustumCulling;
 use bevy::DefaultPlugins;
 use bevy::utils::default;
-use bevy_panorbit_camera::{PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
 pub mod get_points;
 use crate::get_points::get_points;
-use bevy::input::{keyboard::KeyboardInput, mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},};
+use bevy::input::{keyboard::{KeyboardInput, KeyCode}, mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},};
 use bevy_blendy_cameras::{
     BlendyCamerasPlugin, FlyCameraController, FrameEvent,
     OrbitCameraController, SwitchProjection, SwitchToFlyController,
@@ -24,6 +23,7 @@ use bevy_blendy_cameras::{
 };
 use bevy::ecs::prelude::Resource;
 use bevy::ecs::entity::Entity;
+use bevy::ecs::event::EventWriter;
 
 #[derive(Resource)]
 struct Scene {
@@ -34,7 +34,7 @@ fn main() {
     App::new()
         .add_plugins((DefaultPlugins, VoxelMaterialPlugin, BlendyCamerasPlugin))
         .add_systems(Startup, voxel_plot_setup)
-        .add_systems(Update, (print_keyboard_event_system, mouse_click_system))
+        .add_systems(Update, (print_keyboard_event_system, mouse_click_system, switch_camera_controler_system))
         .run();
 }
 
@@ -89,8 +89,19 @@ fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let camera_entity = commands.spawn((
         Camera3d::default() ,
         Transform::from_translation(Vec3::new(0.0, 1.5, 5.0)),
-        OrbitCameraController::default(),
+        OrbitCameraController {
+            button_orbit: MouseButton::Left,
+            button_pan: MouseButton::Left,
+            ..default()
+        },
         FlyCameraController {
+            key_move_forward:KeyCode::KeyW,
+            key_move_backward:KeyCode::KeyS,
+            key_move_left:KeyCode::KeyA,
+            key_move_right:KeyCode::KeyD,
+            key_move_down:KeyCode::KeyQ,
+            key_move_up:KeyCode::KeyE,
+            button_rotate:MouseButton::Left,
             is_enabled: false,
             ..default()
         },
@@ -122,21 +133,42 @@ fn load_pcd_file(path: &str) -> (Vec<InstanceData>, f32, f32, f32) {
 }
 
 fn print_keyboard_event_system(mut keyboard_inputs: EventReader<KeyboardInput>) {
-    for keyboard_input in keyboard_inputs.read() {
-        println!("{:?}", keyboard_input);
-    }
+    // for keyboard_input in keyboard_inputs.read() {
+    //     println!("{:?}", keyboard_input);
+    // }
 }
 
 fn mouse_click_system(mouse_button_input: Res<ButtonInput<MouseButton>>) {
     if mouse_button_input.pressed(MouseButton::Left) {
-        println!("left mouse currently pressed");
+        // println!("left mouse currently pressed");
     }
 
     if mouse_button_input.just_pressed(MouseButton::Left) {
-        println!("left mouse just pressed");
+        // println!("left mouse just pressed");
     }
 
     if mouse_button_input.just_released(MouseButton::Left) {
-        println!("left mouse just released");
+        // println!("left mouse just released");
+    }
+}
+
+fn switch_camera_controler_system(
+    mut commands: Commands,
+    key_input: Res<ButtonInput<KeyCode>>,
+    mut orbit_ev_writer: EventWriter<SwitchToOrbitController>,
+    mut fly_ev_writer: EventWriter<SwitchToFlyController>,
+    // mut help_text: ResMut<HelpText>,
+    scene: Res<Scene>,
+) {
+    
+    if key_input.just_pressed(KeyCode::Tab) {
+        fly_ev_writer.write(SwitchToFlyController {
+            camera_entity: scene.camera_entity,
+        });
+    }
+    if key_input.just_pressed(KeyCode::CapsLock) {
+        orbit_ev_writer.write(SwitchToOrbitController {
+            camera_entity: scene.camera_entity,
+        });
     }
 }
