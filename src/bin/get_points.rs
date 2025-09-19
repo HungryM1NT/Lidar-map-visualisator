@@ -78,10 +78,10 @@ pub fn get_points(path: &str) -> Result<Vec<MyPoint>, String> {
         index += 1;
     }
 
-    println!("{} {} {} {} {} {}", x_min, y_min, z_min, x_max, y_max, z_max);
+    // println!("{} {} {} {} {} {}", x_min, y_min, z_min, x_max, y_max, z_max);
     set_points_chunks(&mut points, [x_min, x_max, y_min, y_max, z_min, z_max]);
 
-    println!("{:?}", points);
+    // println!("{:?}", points);
     Ok(points)
 }
 

@@ -41,7 +41,7 @@ fn main() {
 
 fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let (instances, cube_width, cube_height, cube_depth) =
-        load_pcd_file("assets/ascii.pcd");
+        load_pcd_file("assets/hak_ascii.pcd");
 
     let mut instances: Vec<InstanceData> = instances.into_iter().collect();
 
@@ -195,7 +195,7 @@ fn cursor(
     // println!("{:?}", ray);
 
     let point = ray.get_point(12.);
-    println!("{:?}", ray.direction);
+    // println!("{:?}", ray.direction);
 
     // Draw a circle just above the ground plane at that position.
     // gizmos.circle(
