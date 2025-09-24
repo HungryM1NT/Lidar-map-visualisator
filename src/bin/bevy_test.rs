@@ -13,8 +13,8 @@ use bevy::render::view::NoFrustumCulling;
 use bevy::DefaultPlugins;
 use bevy::utils::default;
 use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
-pub mod get_points;
-use crate::get_points::get_points;
+pub mod point_reader;
+use crate::point_reader::get_points;
 use bevy::input::{keyboard::{KeyboardInput, KeyCode}, mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},};
 use bevy_blendy_cameras::{
     BlendyCamerasPlugin, FlyCameraController, FrameEvent,
@@ -41,7 +41,7 @@ fn main() {
 
 fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let (instances, cube_width, cube_height, cube_depth) =
-        load_pcd_file("assets/hak_ascii.pcd");
+        load_pcd_file("assets/hak_binary.pcd");
 
     let mut instances: Vec<InstanceData> = instances.into_iter().collect();
 
@@ -119,7 +119,7 @@ fn load_pcd_file(path: &str) -> (Vec<InstanceData>, f32, f32, f32) {
 
     for point in point_list {
         let instance = InstanceData {
-            pos_scale: [point.x, point.y, point.z, 3.3],
+            pos_scale: [point.x, point.y, point.z, 0.3],
             color: LinearRgba::from(Color::srgba(1.0, 1.0, 1.0, 1.0)).to_f32_array(), // you can set color later if needed
         };
 
