@@ -1,4 +1,4 @@
-pub const SPLIT_NUM: u32 = 10;
+// pub const SPLIT_NUM: u32 = 10;
 pub const POINTS_IN_ONE_CHUNK: u32 = 100_000;
 
 pub struct PCDField {
@@ -25,5 +25,6 @@ pub struct PCDData {
     pub y_min: f32,
     pub y_max: f32,
     pub z_min: f32,
-    pub z_max: f32
+    pub z_max: f32,
+    pub chunks_in_one_row: u32,
 }

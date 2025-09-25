@@ -1,7 +1,7 @@
-use std::{cmp::min, f32::INFINITY};
+use std::f32::INFINITY;
 
-use pcd_rs::{DynReader, Field, PcdMeta, ValueKind, Reader, DynRecord};
-use hakaton::util::*;
+use pcd_rs::{DynReader, Field, PcdMeta, ValueKind};
+use crate::util::*;
 
 fn field_to_value(field: &Field) -> f32 {
     match field.kind() {
@@ -74,30 +74,31 @@ fn read_file(path: &str) -> Result<PCDData, String> {
         points.push(point);
         index += 1;
     }
-    Ok(PCDData { points, x_min, x_max, y_min, y_max, z_min, z_max })
+    Ok(PCDData { points, x_min, x_max, y_min, y_max, z_min, z_max, chunks_in_one_row: 1 })
 }
 
-pub fn read_and_process_pcd_file(path: &str) {
-    let pcd_data = read_file(path).unwrap();
-    split_to_chunks(pcd_data);
+pub fn read_and_process_pcd_file(path: &str) -> PCDData {
+    let mut pcd_data = read_file(path).unwrap();
+    split_to_chunks(&mut pcd_data);
 
 
     // println!("{} {} {} {} {} {}", x_min, y_min, z_min, x_max, y_max, z_max);
     // set_points_chunks(&mut points, [x_min, x_max, y_min, y_max, z_min, z_max]);
 
     // println!("{:?}", points);
-
+    pcd_data
 }
 
-fn split_to_chunks(pcd_data: PCDData) {
+fn split_to_chunks(pcd_data: &mut PCDData) {
     let points_num = pcd_data.points.len() as u32;
     let chunks_num = points_num / POINTS_IN_ONE_CHUNK;
     let chunks_in_one_row = (chunks_num as f32).sqrt() as u32 + 1;
+    pcd_data.chunks_in_one_row = chunks_in_one_row;
 
     let x_divisions = divide_by_n(pcd_data.x_min, pcd_data.x_max, chunks_in_one_row);
     let y_divisions = divide_by_n(pcd_data.y_min, pcd_data.y_max, chunks_in_one_row);
     
-    for mut point in pcd_data.points {
+    for mut point in pcd_data.points.iter_mut() {
         point.chunk_x_index = get_split_index(point.x, &x_divisions);
         point.chunk_y_index = get_split_index(point.y, &y_divisions);
         // println!("{:?}", point)
@@ -149,8 +150,8 @@ fn get_split_index(point_val: f32, divisions: &Vec<f32>) -> u32 {
     return chunk_index as u32;
 }
 
-fn main() {
-    let path = "./assets/hak_big/hak_ascii.pcd";
-    let point_list = read_and_process_pcd_file(path);
-    // println!("{:?}", point_list);
-}
+// fn main() {
+//     let path = "./assets/hak_big/hak_ascii.pcd";
+//     let point_list = read_and_process_pcd_file(path);
+//     // println!("{:?}", point_list);
+// }
