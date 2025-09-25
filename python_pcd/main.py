@@ -2,10 +2,10 @@ import open3d as o3d
 import numpy as np
 
 def main():
-    # pcd = o3d.t.io.read_point_cloud("../assets/points.pcd")
-    pcd = o3d.io.read_point_cloud("../assets/office1.pcd")
+    pcd = o3d.t.io.read_point_cloud("../assets/hak_big/hak_ascii.pcd")
+    # pcd = o3d.io.read_point_cloud("../assets/office1.pcd")
     # print(pcd)
-    # o3d.visualization.draw([pcd])
+    o3d.visualization.draw([pcd])
     
     # mpoints = np.array([
 
@@ -20,7 +20,7 @@ def main():
     # # print("Hello from python-pcd!")
     # pcd = o3d.geometry.PointCloud()
     # pcd.points = o3d.utility.Vector3dVector(mpoints)
-    o3d.io.write_point_cloud("hak_binary2.pcd", pcd, compressed=False, write_ascii=True)
+    # o3d.io.write_point_cloud("hak_binary2.pcd", pcd, compressed=False, write_ascii=True)
 
 if __name__ == "__main__":
     main()

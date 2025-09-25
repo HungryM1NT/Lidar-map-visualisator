@@ -94,7 +94,7 @@ fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let camera_entity = commands.spawn((
         Camera3d::default() ,
         // Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-        Transform::from_translation(Vec3::new(98568.86, 84795.08, 167.93745)),
+        Transform::from_translation(Vec3::new(99523.95, 84802.266, 175.87889)),
         OrbitCameraController {
             button_orbit: MouseButton::Left,
             button_pan: MouseButton::Left,
@@ -123,7 +123,7 @@ fn load_pcd_file(path: &str) -> (Vec<InstanceData>, f32, f32, f32) {
     let areas = get_file_areas(&pcd_data);
     let mut instances = Vec::new();
 
-    let points = get_area_points(pcd_data, &areas[20]);
+    let points = get_area_points(pcd_data, &areas[0]);
     println!("{:?}", get_area_center(&points));
     println!("{:?}", points.len());
     // for point in pcd_data.points {

@@ -36,8 +36,8 @@ pub fn get_file_areas(pcd_data: &PCDData) -> Vec<Area> {
 
 fn is_area_usefull(pcd_data: &PCDData, area_start_x: u32, area_start_y: u32) -> bool {
     for point in pcd_data.points.iter() {
-        if point.chunk_x_index == area_start_x || point.chunk_x_index + 1 == area_start_x &&
-            point.chunk_y_index == area_start_y || point.chunk_y_index + 1 == area_start_y {
+        if ((point.chunk_x_index == area_start_x) || (point.chunk_x_index - 1 == area_start_x)) &&
+            ((point.chunk_y_index == area_start_y) || (point.chunk_y_index - 1 == area_start_y)) {
                 return true;
             }
     }
@@ -48,8 +48,8 @@ pub fn get_area_points(pcd_data: PCDData, area: &Area) -> Vec<MyPoint> {
     let mut area_points: Vec<MyPoint> = Vec::new();
 
     for point in pcd_data.points {
-        if point.chunk_x_index == area.start_x || point.chunk_x_index - 1 == area.start_x &&
-            point.chunk_y_index == area.start_y || point.chunk_y_index - 1 == area.start_y {
+        if ((point.chunk_x_index == area.start_x) || (point.chunk_x_index - 1 == area.start_x)) &&
+            ((point.chunk_y_index == area.start_y) || (point.chunk_y_index - 1 == area.start_y)) {
 
                 area_points.push(point);
             }

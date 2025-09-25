@@ -147,7 +147,7 @@ fn get_split_index(point_val: f32, divisions: &Vec<f32>) -> u32 {
     for div in divisions {
         if point_val <= *div {
             break;
-        } else if point_val > *div {
+        } else {
             chunk_index += 1
         }
     }
