@@ -1,4 +1,4 @@
-use std::f32::INFINITY;
+use std::{any::Any, f32::{INFINITY, NAN}};
 
 use pcd_rs::{DynReader, Field, PcdMeta, ValueKind};
 use crate::util::*;
@@ -49,6 +49,7 @@ fn read_file(path: &str) -> Result<PCDData, String> {
     let mut z_min: f32 = INFINITY;
     let mut z_max: f32 = -INFINITY;
 
+    'next_point:
     for file_point in file_points {
         let mut point = MyPoint{x:0.0, y:0.0, z:0.0, index, chunk_x_index: 0, chunk_y_index: 0, box_index: 0};
 
@@ -56,6 +57,9 @@ fn read_file(path: &str) -> Result<PCDData, String> {
             // let val = field.to_value::<f32>();
             // println!("{:?}", val);
             let val = field_to_value(field);
+            if val.is_nan() {
+                continue 'next_point;
+            }
             if i == xyz_indexes.x as usize {
                 point.x = val;
                 x_min = x_min.min(val);

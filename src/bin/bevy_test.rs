@@ -13,8 +13,6 @@ use bevy::render::view::NoFrustumCulling;
 use bevy::DefaultPlugins;
 use bevy::utils::default;
 use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
-pub mod point_reader;
-use crate::point_reader::read_and_process_pcd_file;
 use bevy::input::{keyboard::{KeyboardInput, KeyCode}, mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},};
 use bevy_blendy_cameras::{
     BlendyCamerasPlugin, FlyCameraController, FrameEvent,
@@ -25,6 +23,9 @@ use bevy::ecs::prelude::Resource;
 use bevy::ecs::entity::Entity;
 use bevy::ecs::event::EventWriter;
 use bevy::prelude::*;
+
+use hakaton::point_reader::*;
+use hakaton::main_file_splitter::*;
 
 #[derive(Resource)]
 struct Scene {
@@ -41,7 +42,8 @@ fn main() {
 
 fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     let (instances, cube_width, cube_height, cube_depth) =
-        load_pcd_file("assets/hak_binary.pcd");
+        load_pcd_file("./assets/hak_big/hak_ascii.pcd");
+        // load_pcd_file("./assets/office_ascii.pcd");
 
     let mut instances: Vec<InstanceData> = instances.into_iter().collect();
 
@@ -87,9 +89,12 @@ fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
     //     Transform::from_translation(Vec3::new(1.0, 0.0, 5.0)),
     //     PanOrbitCamera::default(),
     // ));
+
+    // 103678.125 86112.67188 164.6864319
     let camera_entity = commands.spawn((
         Camera3d::default() ,
-        Transform::from_translation(Vec3::new(0.0, 0., 0.0)),
+        // Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+        Transform::from_translation(Vec3::new(98568.86, 84795.08, 167.93745)),
         OrbitCameraController {
             button_orbit: MouseButton::Left,
             button_pan: MouseButton::Left,
@@ -114,12 +119,17 @@ fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 
 fn load_pcd_file(path: &str) -> (Vec<InstanceData>, f32, f32, f32) {
-    let point_list = get_points(path).unwrap();
+    let pcd_data = read_and_process_pcd_file(path);
+    let areas = get_file_areas(&pcd_data);
     let mut instances = Vec::new();
 
-    for point in point_list {
+    let points = get_area_points(pcd_data, &areas[20]);
+    println!("{:?}", get_area_center(&points));
+    println!("{:?}", points.len());
+    // for point in pcd_data.points {
+    for point in points {
         let instance = InstanceData {
-            pos_scale: [point.x, point.y, point.z, 0.3],
+            pos_scale: [point.x, point.y, point.z, 5.3],
             color: LinearRgba::from(Color::srgba(1.0, 1.0, 1.0, 1.0)).to_f32_array(), // you can set color later if needed
         };
 
