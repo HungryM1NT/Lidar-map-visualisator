@@ -14,7 +14,7 @@ use bevy::DefaultPlugins;
 use bevy::utils::default;
 use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
 pub mod point_reader;
-use crate::point_reader::get_points;
+use crate::point_reader::read_and_process_pcd_file;
 use bevy::input::{keyboard::{KeyboardInput, KeyCode}, mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},};
 use bevy_blendy_cameras::{
     BlendyCamerasPlugin, FlyCameraController, FrameEvent,

@@ -1,36 +1,7 @@
 use std::{cmp::min, f32::INFINITY};
 
 use pcd_rs::{DynReader, Field, PcdMeta, ValueKind, Reader, DynRecord};
-
-
-const SPLIT_NUM: u32 = 10;
-const POINTS_IN_ONE_CHUNK: u32 = 100_000;
-
-struct PCDField {
-    x: i8,
-    y: i8,
-    z: i8
-}
-
-#[derive(Debug)]
-pub struct MyPoint {
-    pub x: f32,
-    pub y: f32,
-    pub z: f32,
-    pub chunk: u32,
-    pub box_index: u32,
-    pub index: u32,
-}
-
-struct PCDData {
-    points: Vec<MyPoint>,
-    x_min: f32,
-    x_max: f32,
-    y_min: f32,
-    y_max: f32,
-    z_min: f32,
-    z_max: f32
-}
+use hakaton::util::*;
 
 fn field_to_value(field: &Field) -> f32 {
     match field.kind() {
@@ -79,7 +50,7 @@ fn read_file(path: &str) -> Result<PCDData, String> {
     let mut z_max: f32 = -INFINITY;
 
     for file_point in file_points {
-        let mut point = MyPoint{x:0.0, y:0.0, z:0.0, index, chunk: 0, box_index: 0};
+        let mut point = MyPoint{x:0.0, y:0.0, z:0.0, index, chunk_x_index: 0, chunk_y_index: 0, box_index: 0};
 
         for (i, field) in file_point.0.iter().enumerate() {
             // let val = field.to_value::<f32>();
@@ -126,6 +97,11 @@ fn split_to_chunks(pcd_data: PCDData) {
     let x_divisions = divide_by_n(pcd_data.x_min, pcd_data.x_max, chunks_in_one_row);
     let y_divisions = divide_by_n(pcd_data.y_min, pcd_data.y_max, chunks_in_one_row);
     
+    for mut point in pcd_data.points {
+        point.chunk_x_index = get_split_index(point.x, &x_divisions);
+        point.chunk_y_index = get_split_index(point.y, &y_divisions);
+        // println!("{:?}", point)
+    }
 
     // let temp_x = (pcd_data.x_max - pcd_data.x_min) / chunks_in_one_row as f32 * 2. + pcd_data.x_min;
     // let temp_y = (pcd_data.y_max - pcd_data.y_min) / chunks_in_one_row as f32 * 2. + pcd_data.y_min;
@@ -161,34 +137,20 @@ fn divide_by_n(min_value: f32, max_value: f32, n: u32) -> Vec<f32> {
 //     }
 // }
 
-// fn get_xyz_index(point_val: f32, divisions: &Vec<f32>) -> usize {
-//     let mut chunk_index = 0;
-//     for div in divisions {
-//         if point_val <= *div {
-//             break;
-//         } else if point_val > *div {
-//             chunk_index += 1
-//         }
-//     }
-//     return chunk_index;
-// }
+fn get_split_index(point_val: f32, divisions: &Vec<f32>) -> u32 {
+    let mut chunk_index = 0;
+    for div in divisions {
+        if point_val <= *div {
+            break;
+        } else if point_val > *div {
+            chunk_index += 1
+        }
+    }
+    return chunk_index as u32;
+}
 
-// fn get_divisions(borders: [f32; 6]) -> [Vec<f32>; 3] {
-//     let x_step = (borders[1] - borders[0]) / SPLIT_NUM as f32;
-//     let y_step = (borders[3] - borders[2]) / SPLIT_NUM as f32;
-//     let z_step = (borders[5] - borders[4]) / SPLIT_NUM as f32;
-//     let mut x_divisions: Vec<f32> = Vec::new();
-//     let mut y_divisions: Vec<f32> = Vec::new();
-//     let mut z_divisions: Vec<f32> = Vec::new();
-//     for i in 0..SPLIT_NUM as i32 {
-//         x_divisions.push(borders[0] + x_step * (i + 1) as f32);
-//         y_divisions.push(borders[2] + y_step * (i + 1) as f32);
-//         z_divisions.push(borders[4] + z_step * (i + 1) as f32);
-//     };
-//     [x_divisions, y_divisions, z_divisions]
-// }
 fn main() {
-    let path = "./assets/hak_ascii.pcd";
+    let path = "./assets/hak_big/hak_ascii.pcd";
     let point_list = read_and_process_pcd_file(path);
     // println!("{:?}", point_list);
 }
