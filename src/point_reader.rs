@@ -97,32 +97,57 @@ fn split_to_chunks(pcd_data: &mut PCDData) {
     let points_num = pcd_data.points.len() as u32;
     let chunks_num = points_num / POINTS_IN_ONE_CHUNK;
     let chunks_in_one_row = (chunks_num as f32).sqrt() as u32 + 1;
-    pcd_data.chunks_in_one_row = chunks_in_one_row;
 
-    let x_divisions = divide_by_n(pcd_data.x_min, pcd_data.x_max, chunks_in_one_row);
-    let y_divisions = divide_by_n(pcd_data.y_min, pcd_data.y_max, chunks_in_one_row);
-
-    let mut chunks: Vec<Vec<Vec<MyPoint>>> = vec![vec![vec![]; chunks_in_one_row as usize]; chunks_in_one_row as usize];
+    let mut chunk_splitter_value = ChunkSplitter::Try(chunks_in_one_row);
+    // pcd_data.chunks_in_one_row = chunks_in_one_row;
     
-    for mut point in pcd_data.points.iter_mut() {
-        let x_index = get_split_index(point.x, &x_divisions);
-        let y_index  = get_split_index(point.y, &y_divisions);
-        point.chunk_x_index = x_index;
-        point.chunk_y_index = y_index;
-        chunks[x_index as usize][y_index as usize].push(point.clone());
-        // println!("{:?}", point)
+    'chunk_splitter:
+    while let ChunkSplitter::Try(chunks_in_one_row) = chunk_splitter_value {
+        let x_divisions = divide_by_n(pcd_data.x_min, pcd_data.x_max, chunks_in_one_row);
+        let y_divisions = divide_by_n(pcd_data.y_min, pcd_data.y_max, chunks_in_one_row);
+    
+        let mut chunks: Vec<Vec<Vec<MyPoint>>> = vec![vec![vec![]; chunks_in_one_row as usize]; chunks_in_one_row as usize];
+        
+        for point in pcd_data.points.iter_mut() {
+            let x_index = get_split_index(point.x, &x_divisions);
+            let y_index  = get_split_index(point.y, &y_divisions);
+            point.chunk_x_index = x_index;
+            point.chunk_y_index = y_index;
+            chunks[x_index as usize][y_index as usize].push(point.clone());
+            // println!("{:?}", point)
+        }
+        let mut areas: Vec<Vec<MyPoint>> = Vec::new();
+    
+        for x_haha in 0..chunks_in_one_row - 1 {
+            for y_haha in 0..chunks_in_one_row - 1 {
+                let mut area: Vec<MyPoint> = vec![];
+                area.append(&mut chunks[x_haha as usize][y_haha as usize]);
+                area.append(&mut chunks[(x_haha + 1) as usize][y_haha as usize]);
+                area.append(&mut chunks[x_haha as usize][(y_haha + 1) as usize]);
+                area.append(&mut chunks[(x_haha + 1) as usize][(y_haha + 1) as usize]);
+                // println!("{}", area.len())
+                if area.len() as u32 > POINTS_IN_ONE_CHUNK * 4 {
+                    chunk_splitter_value = ChunkSplitter::Try((chunks_in_one_row as f32 * 1.2) as u32 + 1);
+                    continue 'chunk_splitter;
+                }
+
+                // TODO: Убрать
+                if area.len() != 0 {
+                    areas.push(area)
+                }
+            }
+        }
+        chunk_splitter_value = ChunkSplitter::Ok(areas);
+        
+        
+    }
+    if let ChunkSplitter::Ok(areas) = chunk_splitter_value {
+        println!("{}", areas.len());
+        // for area in areas {
+        //     println!("{}", area.len())
+        // }
     }
 
-    for x_haha in 0..chunks_in_one_row - 1 {
-        for y_haha in 0..chunks_in_one_row - 1 {
-            let mut area: Vec<MyPoint> = vec![];
-            area.append(&mut chunks[x_haha as usize][y_haha as usize]);
-            area.append(&mut chunks[(x_haha + 1) as usize][y_haha as usize]);
-            area.append(&mut chunks[x_haha as usize][(y_haha + 1) as usize]);
-            area.append(&mut chunks[(x_haha + 1) as usize][(y_haha + 1) as usize]);
-            println!("{}", area.len())
-        }
-    }
     // println!("{:?}", chunks);
     // let temp_x = (pcd_data.x_max - pcd_data.x_min) / chunks_in_one_row as f32 * 2. + pcd_data.x_min;
     // let temp_y = (pcd_data.y_max - pcd_data.y_min) / chunks_in_one_row as f32 * 2. + pcd_data.y_min;

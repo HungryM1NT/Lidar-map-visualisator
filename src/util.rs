@@ -28,3 +28,8 @@ pub struct PCDData {
     pub z_max: f32,
     pub chunks_in_one_row: u32,
 }
+
+pub enum ChunkSplitter {
+    Ok(Vec<Vec<MyPoint>>),
+    Try(u32)
+}
