@@ -33,3 +33,12 @@ pub enum ChunkSplitter {
     Ok(Vec<Vec<MyPoint>>),
     Try(u32)
 }
+
+impl ChunkSplitter {
+    pub fn unwrap(self) -> Vec<Vec<MyPoint>> {
+        match self {
+            ChunkSplitter::Ok(areas) => areas,
+            ChunkSplitter::Try(_) => vec![vec![]]
+        }
+    }
+}

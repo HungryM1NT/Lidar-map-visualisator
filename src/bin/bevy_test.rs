@@ -119,11 +119,13 @@ fn voxel_plot_setup(mut commands: Commands, mut meshes: ResMut<Assets<Mesh>>) {
 
 
 fn load_pcd_file(path: &str) -> (Vec<InstanceData>, f32, f32, f32) {
-    let pcd_data = read_and_process_pcd_file(path);
-    let areas = get_file_areas(&pcd_data);
+    let areas = read_and_process_pcd_file(path);
+    // let areas = get_file_areas(&pcd_data);
+
     let mut instances = Vec::new();
 
-    let points = get_area_points(pcd_data, &areas[0]);
+    // let points = get_area_points(pcd_data, &areas[0]);
+    let points = &areas[1];
     println!("{:?}", get_area_center(&points));
     println!("{:?}", points.len());
     // for point in pcd_data.points {

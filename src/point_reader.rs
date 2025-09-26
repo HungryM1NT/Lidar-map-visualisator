@@ -81,19 +81,19 @@ fn read_file(path: &str) -> Result<PCDData, String> {
     Ok(PCDData { points, x_min, x_max, y_min, y_max, z_min, z_max, chunks_in_one_row: 1 })
 }
 
-pub fn read_and_process_pcd_file(path: &str) -> PCDData {
+pub fn read_and_process_pcd_file(path: &str) -> Vec<Vec<MyPoint>> {
     let mut pcd_data = read_file(path).unwrap();
-    split_to_chunks(&mut pcd_data);
+    split_to_chunks(&mut pcd_data)
 
 
     // println!("{} {} {} {} {} {}", x_min, y_min, z_min, x_max, y_max, z_max);
     // set_points_chunks(&mut points, [x_min, x_max, y_min, y_max, z_min, z_max]);
 
     // println!("{:?}", points);
-    pcd_data
+    // pcd_data
 }
 
-fn split_to_chunks(pcd_data: &mut PCDData) {
+fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
     let points_num = pcd_data.points.len() as u32;
     let chunks_num = points_num / POINTS_IN_ONE_CHUNK;
     let chunks_in_one_row = (chunks_num as f32).sqrt() as u32 + 1;
@@ -141,12 +141,13 @@ fn split_to_chunks(pcd_data: &mut PCDData) {
         
         
     }
-    if let ChunkSplitter::Ok(areas) = chunk_splitter_value {
-        println!("{}", areas.len());
-        // for area in areas {
-        //     println!("{}", area.len())
-        // }
-    }
+    // if let ChunkSplitter::Ok(areas) = chunk_splitter_value {
+    //     println!("{}", areas.len());
+    //     // for area in areas {
+    //     //     println!("{}", area.len())
+    //     // }
+    // }
+    chunk_splitter_value.unwrap()
 
     // println!("{:?}", chunks);
     // let temp_x = (pcd_data.x_max - pcd_data.x_min) / chunks_in_one_row as f32 * 2. + pcd_data.x_min;
