@@ -7,7 +7,7 @@ pub struct PCDField {
     pub z: i8
 }
 
-#[derive(Debug)]
+#[derive(Debug, Clone)]
 pub struct MyPoint {
     pub x: f32,
     pub y: f32,
