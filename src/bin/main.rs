@@ -40,8 +40,12 @@ fn voxel_plot_setup(
     windows: Query<&Window, With<PrimaryWindow>>,
     mut egui_user_textures: ResMut<EguiUserTextures>,
 ) {
+    println!("213");
     let (instances, cube_width, cube_height, cube_depth) =
-        load_pcd_file("./assets/hak_big/hak_ascii.pcd");
+        // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
+        load_pcd_file("./assets/office_ascii.pcd");
+    println!("213");
+    // let (instances, cube_width, cube_height, cube_depth) = generate_dummy_data();
     let instances: Vec<InstanceData> = instances.into_iter().collect();
 
     // Sort by opacity (color alpha channel) descending
@@ -122,7 +126,7 @@ fn voxel_plot_setup(
                 target: RenderTarget::Image(ImageRenderTarget::from(image_handle.clone())),
                 ..default()
             },
-            Transform::from_translation(Vec3::new(0.0, -150.0, 15.0))
+            Transform::from_translation(Vec3::new(-0.18204434, -0.12016031, 104.0089207))
                 .looking_at(Vec3::ZERO, Vec3::Y),
             PanOrbitCamera::default(),
             first_pass_layer,
@@ -236,8 +240,8 @@ fn show_plot(
     let available_size = egui::vec2(width.min(height), width.min(height));
 
     // let (instances, cube_width, cube_height, cube_depth) = load_pcd_file("./assets/office_ascii.pcd");
-    let (instances, cube_width, cube_height, cube_depth) = generate_dummy_data();
-    let new_mesh = meshes.add(Cuboid::new(cube_width, cube_height, cube_depth));
+    // let (instances, cube_width, cube_height, cube_depth) = generate_dummy_data();
+    // let new_mesh = meshes.add(Cuboid::new(cube_width, cube_height, cube_depth));
 
     ui.vertical(|ui| {
         ui.label("3D Voxel Plot");
@@ -267,18 +271,18 @@ fn show_plot(
         // a simple slider to control the opacity threshold
         ui.label("Opacity:");
 
-        if ui
-            .add(egui::Slider::new(&mut opacity_threshold.0, 0.01..=1.0).text("Opacity Threshold"))
-            .changed()
-        {
-            if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
-                instance_data.instances = instances;
-                mesh3d.0 = new_mesh;
-                instance_data
-                    .instances
-                    .retain(|instance| 1 >= 0);
-            }
-        }
+        // if ui
+        //     .add(egui::Slider::new(&mut opacity_threshold.0, 0.01..=1.0).text("Opacity Threshold"))
+        //     .changed()
+        // {
+        //     if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
+        //         instance_data.instances = instances;
+        //         mesh3d.0 = new_mesh;
+        //         instance_data
+        //             .instances
+        //             .retain(|instance| 1 >= 0);
+        //     }
+        // }
         // if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
         //         instance_data.instances = instances;
         //         mesh3d.0 = new_mesh;
@@ -296,7 +300,7 @@ fn load_pcd_file(path: &str) -> (Vec<InstanceData>, f32, f32, f32) {
     let mut instances = Vec::new();
 
     // let points = get_area_points(pcd_data, &areas[0]);
-    let points = &areas[1];
+    let points = &areas[0];
     println!("{:?}", get_area_center(&points));
     println!("{:?}", points.len());
     // for point in pcd_data.points {
