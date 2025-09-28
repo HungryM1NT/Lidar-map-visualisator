@@ -9,6 +9,8 @@ bevy_blendy_cameras = "0.7.0"
 bevy_egui = "0.34.0"
 bevy_panorbit_camera = "0.28.0"
 bevy_voxel_plot = "2.1.0"
+egui_dock = "0.17.0"
 pcd-rs = { git = "https://github.com/jerry73204/pcd-rs.git" }
 pcd-rs-derive = { git = "https://github.com/jerry73204/pcd-rs.git" }
 pcd_reader = "0.1.0"
+rfd = "0.15.4"

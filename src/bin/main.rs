@@ -21,6 +21,8 @@ use bevy_panorbit_camera::{ActiveCameraData, PanOrbitCamera, PanOrbitCameraPlugi
 use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
 use hakaton::point_reader::*;
 use hakaton::main_file_splitter::*;
+use hakaton::util::MyPoint;
+use rfd;
 
 #[derive(Resource)]
 pub struct OpacityThreshold(pub f32);
@@ -31,6 +33,33 @@ pub struct RenderImage(Handle<Image>);
 
 #[derive(Resource, Default)]
 pub struct CameraInputAllowed(pub bool);
+
+
+#[derive(Resource, Default)]
+pub struct PCDFilePath(pub String);
+
+
+#[derive(Resource)]
+pub struct Areas(pub Vec<Vec<MyPoint>>);
+
+#[derive(Resource)]
+pub struct PCDFileInfo {
+    pub path: String,
+    pub areas: Vec<Vec<MyPoint>>,
+    pub area_num: u32,
+    pub area_len: u32
+}
+
+impl Default for PCDFileInfo {
+    fn default() -> Self {
+        PCDFileInfo {
+            path: String::new(),
+            areas: vec![],
+            area_num: 1,
+            area_len: 1
+        }
+    }
+}
 
 fn voxel_plot_setup(
     mut commands: Commands,
@@ -44,8 +73,6 @@ fn voxel_plot_setup(
     let (instances, cube_width, cube_height, cube_depth) =
         // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
         load_pcd_file("./assets/office_ascii.pcd");
-    println!("213");
-    // let (instances, cube_width, cube_height, cube_depth) = generate_dummy_data();
     let instances: Vec<InstanceData> = instances.into_iter().collect();
 
     // Sort by opacity (color alpha channel) descending
@@ -78,6 +105,7 @@ fn voxel_plot_setup(
         // component to avoid incorrect culling.
         NoFrustumCulling,
     ));
+    
 
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
@@ -126,12 +154,14 @@ fn voxel_plot_setup(
                 target: RenderTarget::Image(ImageRenderTarget::from(image_handle.clone())),
                 ..default()
             },
-            Transform::from_translation(Vec3::new(-0.18204434, -0.12016031, 104.0089207))
+            Transform::from_translation(Vec3::new(0.31, 0.98, 20.14238))
                 .looking_at(Vec3::ZERO, Vec3::Y),
             PanOrbitCamera::default(),
             first_pass_layer,
         ))
         .id();
+    
+
     
     // Set up manual override of PanOrbitCamera. Note that this must run after PanOrbitCameraPlugin
     // is added, otherwise ActiveCameraData will be overwritten.
@@ -153,37 +183,6 @@ fn voxel_plot_setup(
         manual: true,
     });
 
-    // // camera
-    // // commands.spawn((
-    // //     Transform::from_translation(Vec3::new(1.0, 0.0, 5.0)),
-    // //     PanOrbitCamera::default(),
-    // // ));
-
-    // // 103678.125 86112.67188 164.6864319
-    // let camera_entity = commands.spawn((
-    //     Camera3d::default() ,
-    //     // Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-    //     Transform::from_translation(Vec3::new(99523.95, 84802.266, 175.87889)),
-    //     OrbitCameraController {
-    //         button_orbit: MouseButton::Left,
-    //         button_pan: MouseButton::Left,
-    //         ..default()
-    //     },
-    //     FlyCameraController {
-    //         key_move_forward:KeyCode::KeyW,
-    //         key_move_backward:KeyCode::KeyS,
-    //         key_move_left:KeyCode::KeyA,
-    //         key_move_right:KeyCode::KeyD,
-    //         key_move_down:KeyCode::KeyQ,
-    //         key_move_up:KeyCode::KeyE,
-    //         button_rotate:MouseButton::Left,
-    //         is_enabled: false,
-    //         ..default()
-    //     },
-    // )).id();
-    // commands.insert_resource(Scene {
-    //     camera_entity,
-    // });
 }
 
 fn set_enable_camera_controls_system(
@@ -203,6 +202,9 @@ pub fn update_gui(
     mut contexts: EguiContexts,
     mut opacity_threshold: ResMut<OpacityThreshold>,
     mut cam_input: ResMut<CameraInputAllowed>,
+    mut pcd_file_path: ResMut<PCDFilePath>,
+    mut areas: ResMut<Areas>,
+    mut pcd_file_info: &mut ResMut<PCDFileInfo>
 ) {
     let cube_preview_texture_id = contexts.image_id(&cube_preview_image).unwrap();
 
@@ -212,16 +214,53 @@ pub fn update_gui(
     let height = 500.0;
 
     egui::CentralPanel::default().show(ctx, |ui| {
-        show_plot(
-            &mut meshes,
-            &cube_preview_texture_id,
-            width,
-            height,
-            ui,
-            &mut query,
-            &mut opacity_threshold,
-            &mut cam_input,
-        )
+        if pcd_file_path.0.is_empty() {
+            start_menu(
+                ui, 
+                &mut pcd_file_path,
+                &mut areas
+            );
+        } else {
+            show_plot(
+                &mut meshes,
+                &cube_preview_texture_id,
+                width,
+                height,
+                ui,
+                &mut query,
+                &mut opacity_threshold,
+                &mut cam_input,
+                &mut pcd_file_path
+            )
+            }
+        });
+}
+
+fn start_menu(
+    ui: &mut Ui,
+    pcd_file_path: &mut ResMut<PCDFilePath>,
+    areas: &mut ResMut<Areas>,
+    pcd_file_info: &mut ResMut<PCDFileInfo>
+) {
+    ui.label("Выбери нужный вариант");
+    ui.horizontal(|ui| {
+        if ui.button("Auto").clicked() {
+            println!("Too early");
+            println!("{}", pcd_file_path.0);
+        }
+        if ui.button("Editor").clicked() {
+            println!("Let's go");
+            if let Some(path) = rfd::FileDialog::new().pick_file() {
+                    let test = Some(path.display().to_string());
+                    pcd_file_path.0 = test.unwrap();
+                    areas.0 = read_and_process_pcd_file(&pcd_file_path.0);
+                    // println!("{:?}", areas.0);
+                    // println!("{:?}", test);
+                    //     let (instances, cube_width, cube_height, cube_depth) =
+                    //     // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
+                    //     load_pcd_file(&test.unwrap());
+                }
+        }
     });
 }
 
@@ -234,6 +273,7 @@ fn show_plot(
     query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
     opacity_threshold: &mut ResMut<OpacityThreshold>,
     cam_input: &mut ResMut<CameraInputAllowed>,
+    pcd_file_path: &mut ResMut<PCDFilePath>
 ) {
     // make space for opacity slider
     height -= 100.0;
@@ -243,6 +283,29 @@ fn show_plot(
     // let (instances, cube_width, cube_height, cube_depth) = generate_dummy_data();
     // let new_mesh = meshes.add(Cuboid::new(cube_width, cube_height, cube_depth));
 
+    // if pcd_file_path.0.is_empty() {
+    //     ui.label("Выбери нужный вариант");
+    //     ui.horizontal(|ui| {
+    //         if ui.button("Auto").clicked() {
+    //             println!("Too early");
+    //             println!("{}", pcd_file_path.0);
+    //         }
+    //         if ui.button("Editor").clicked() {
+    //             println!("Let's go");
+    //             if let Some(path) = rfd::FileDialog::new().pick_file() {
+    //                     let test = Some(path.display().to_string());
+    //                     pcd_file_path.0 = test.unwrap();
+    //                     // println!("{:?}", test);
+    //                     //     let (instances, cube_width, cube_height, cube_depth) =
+    //                     //     // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
+    //                     //     load_pcd_file(&test.unwrap());
+    //                 }
+    //         }
+    //     });
+    // } else {
+    // }
+    ui.label("text");
+    
     ui.vertical(|ui| {
         ui.label("3D Voxel Plot");
 
@@ -306,7 +369,7 @@ fn load_pcd_file(path: &str) -> (Vec<InstanceData>, f32, f32, f32) {
     // for point in pcd_data.points {
     for point in points {
         let instance = InstanceData {
-            pos_scale: [point.x, point.y, point.z, 5.3],
+            pos_scale: [point.x, point.y, point.z, 15.3],
             color: LinearRgba::from(Color::srgba(1.0, 1.0, 1.0, 1.0)).to_f32_array(), // you can set color later if needed
         };
 
@@ -332,56 +395,11 @@ fn main() {
         ))
         .insert_resource(OpacityThreshold(0.0)) // Start with no threshold
         .insert_resource(CameraInputAllowed(false))
+        .insert_resource(PCDFilePath(String::new()))
+        .insert_resource(Areas(Vec::new()))
+        .insert_resource(PCDFileInfo::default())
         .add_systems(Startup, voxel_plot_setup)
         .add_systems(Update, update_gui)
         .add_systems(Update, set_enable_camera_controls_system)
         .run();
-}
-
-fn jet_colormap(value: f32) -> (f32, f32, f32) {
-    let four_value = 4.0 * value;
-    let r = (four_value - 1.5).clamp(0.0, 1.0);
-    let g = (four_value - 0.5).clamp(0.0, 1.0) - (four_value - 2.5).clamp(0.0, 1.0);
-    let b = 1.0 - (four_value - 1.5).clamp(0.0, 1.0);
-
-    (r, g, b)
-}
-fn generate_dummy_data() -> (Vec<InstanceData>, f32, f32, f32) {
-    let mut instances = vec![];
-
-    // let grid_width = 30;
-    // let grid_height = 30;
-    // let grid_depth = 30;
-    let grid_width = 100;
-    let grid_height = 200;
-    let grid_depth = 200;
-    let cube_width = 1.0;
-    let cube_height = 1.0;
-    let cube_depth = 1.0;
-
-    let mut opacity = 0.0;
-    for x in 0..grid_width {
-        for y in 0..grid_height {
-            for z in 0..grid_depth {
-                // opacity += 1.0 / (grid_width * grid_height * grid_depth) as f32;
-                opacity = 1.;
-                let position = Vec3::new(
-                    x as f32 * cube_width - (grid_width as f32 * cube_width) / 2.0,
-                    y as f32 * cube_height - (grid_height as f32 * cube_height) / 2.0,
-                    z as f32 * cube_depth - (grid_depth as f32 * cube_depth) / 2.0,
-                );
-
-                // also make fancy colors depending on the value
-                let (r, g, b) = jet_colormap(opacity);
-
-                let instance = InstanceData {
-                    pos_scale: [position.x, position.y, position.z, 1.0],
-                    color: LinearRgba::from(Color::srgba(r, g, b, opacity))
-                        .to_f32_array(),
-                };
-                instances.push(instance);
-            }
-        }
-    }
-    (instances, cube_width, cube_height, cube_depth)
 }
