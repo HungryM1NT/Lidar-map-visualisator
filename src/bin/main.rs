@@ -70,10 +70,10 @@ fn voxel_plot_setup(
     mut egui_user_textures: ResMut<EguiUserTextures>,
 ) {
     println!("213");
-    let (instances, cube_width, cube_height, cube_depth) =
-        // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
-        load_pcd_file("./assets/office_ascii.pcd");
-    let instances: Vec<InstanceData> = instances.into_iter().collect();
+    // let (instances, cube_width, cube_height, cube_depth) =
+    //     // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
+    //     load_pcd_file("./assets/office_ascii.pcd");
+    // let instances: Vec<InstanceData> = instances.into_iter().collect();
 
     // Sort by opacity (color alpha channel) descending
     // instances.sort_by(|a, b| {
@@ -93,17 +93,21 @@ fn voxel_plot_setup(
     //     println!("Auto threshold for opacity was: {}", threshold);
     // }
 
+    let empty_instance = InstanceData {
+            pos_scale: [0., 0., 0., 0.],
+            color: [0., 0., 0., 0.]
+        };
     commands.spawn((
-        Mesh3d(meshes.add(Cuboid::new(cube_width, cube_height, cube_depth))),
-        InstanceMaterialData { instances },
-        // NOTE: Frustum culling is done based on the Aabb of the Mesh and the GlobalTransform.
-        // As the cube is at the origin, if its Aabb moves outside the view frustum, all the
-        // instanced cubes will be culled.
-        // The InstanceMaterialData contains the 'GlobalTransform' information for this custom
-        // instancing, and that is not taken into account with the built-in frustum culling.
-        // We must disable the built-in frustum culling by adding the `NoFrustumCulling` marker
-        // component to avoid incorrect culling.
-        NoFrustumCulling,
+        Mesh3d(meshes.add(Cuboid::new(0., 0., 0.))),
+        InstanceMaterialData { instances: vec![empty_instance] },
+    //     // NOTE: Frustum culling is done based on the Aabb of the Mesh and the GlobalTransform.
+    //     // As the cube is at the origin, if its Aabb moves outside the view frustum, all the
+    //     // instanced cubes will be culled.
+    //     // The InstanceMaterialData contains the 'GlobalTransform' information for this custom
+    //     // instancing, and that is not taken into account with the built-in frustum culling.
+    //     // We must disable the built-in frustum culling by adding the `NoFrustumCulling` marker
+    //     // component to avoid incorrect culling.
+    //     NoFrustumCulling,
     ));
     
 
@@ -202,9 +206,7 @@ pub fn update_gui(
     mut contexts: EguiContexts,
     mut opacity_threshold: ResMut<OpacityThreshold>,
     mut cam_input: ResMut<CameraInputAllowed>,
-    mut pcd_file_path: ResMut<PCDFilePath>,
-    mut areas: ResMut<Areas>,
-    mut pcd_file_info: &mut ResMut<PCDFileInfo>
+    mut pcd_file_info: ResMut<PCDFileInfo>
 ) {
     let cube_preview_texture_id = contexts.image_id(&cube_preview_image).unwrap();
 
@@ -214,11 +216,12 @@ pub fn update_gui(
     let height = 500.0;
 
     egui::CentralPanel::default().show(ctx, |ui| {
-        if pcd_file_path.0.is_empty() {
+        if pcd_file_info.path.is_empty() {
             start_menu(
                 ui, 
-                &mut pcd_file_path,
-                &mut areas
+                &mut pcd_file_info,
+                &mut meshes,
+                &mut query,
             );
         } else {
             show_plot(
@@ -230,7 +233,7 @@ pub fn update_gui(
                 &mut query,
                 &mut opacity_threshold,
                 &mut cam_input,
-                &mut pcd_file_path
+                &mut pcd_file_info
             )
             }
         });
@@ -238,28 +241,30 @@ pub fn update_gui(
 
 fn start_menu(
     ui: &mut Ui,
-    pcd_file_path: &mut ResMut<PCDFilePath>,
-    areas: &mut ResMut<Areas>,
-    pcd_file_info: &mut ResMut<PCDFileInfo>
+    pcd_file_info: &mut ResMut<PCDFileInfo>,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
 ) {
     ui.label("Выбери нужный вариант");
     ui.horizontal(|ui| {
         if ui.button("Auto").clicked() {
             println!("Too early");
-            println!("{}", pcd_file_path.0);
+            println!("{}", pcd_file_info.path);
         }
         if ui.button("Editor").clicked() {
             println!("Let's go");
             if let Some(path) = rfd::FileDialog::new().pick_file() {
-                    let test = Some(path.display().to_string());
-                    pcd_file_path.0 = test.unwrap();
-                    areas.0 = read_and_process_pcd_file(&pcd_file_path.0);
+                let test = Some(path.display().to_string());
+                pcd_file_info.path = test.unwrap();
+                pcd_file_info.areas = read_and_process_pcd_file(&pcd_file_info.path);
+                pcd_file_info.area_len = pcd_file_info.areas.len() as u32;
                     // println!("{:?}", areas.0);
                     // println!("{:?}", test);
                     //     let (instances, cube_width, cube_height, cube_depth) =
                     //     // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
                     //     load_pcd_file(&test.unwrap());
-                }
+                visualize_area(pcd_file_info, meshes, query);
+            }
         }
     });
 }
@@ -273,7 +278,7 @@ fn show_plot(
     query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
     opacity_threshold: &mut ResMut<OpacityThreshold>,
     cam_input: &mut ResMut<CameraInputAllowed>,
-    pcd_file_path: &mut ResMut<PCDFilePath>
+    mut pcd_file_info: &mut ResMut<PCDFileInfo>
 ) {
     // make space for opacity slider
     height -= 100.0;
@@ -332,7 +337,19 @@ fn show_plot(
         });
 
         // a simple slider to control the opacity threshold
-        ui.label("Opacity:");
+        // ui.label("Opacity:");
+        ui.label(format!("{}/{}", pcd_file_info.area_num, pcd_file_info.area_len));
+        ui.horizontal(|ui| {
+            if ui.button("<=").clicked() {
+                // println!("haha")
+                set_new_area(pcd_file_info.area_num - 1, pcd_file_info);
+                visualize_area(pcd_file_info, meshes, query);
+            }
+            if ui.button("=>").clicked() {
+                set_new_area(pcd_file_info.area_num + 1, pcd_file_info);
+                visualize_area(pcd_file_info, meshes, query);
+            }
+        })
 
         // if ui
         //     .add(egui::Slider::new(&mut opacity_threshold.0, 0.01..=1.0).text("Opacity Threshold"))
@@ -356,18 +373,42 @@ fn show_plot(
     });
 }
 
-fn load_pcd_file(path: &str) -> (Vec<InstanceData>, f32, f32, f32) {
-    let areas = read_and_process_pcd_file(path);
+fn set_new_area(n: u32, mut pcd_file_info: &mut ResMut<PCDFileInfo>) {
+    if n == 0 {
+        pcd_file_info.area_num = pcd_file_info.area_len;
+    } else if n <= pcd_file_info.area_len {
+        pcd_file_info.area_num = n;
+    } else {
+        pcd_file_info.area_num = 1;
+    }
+}
+
+fn visualize_area(
+    mut pcd_file_info: &mut ResMut<PCDFileInfo>,
+    meshes: &mut ResMut<Assets<Mesh>>,
+    query: &mut Query<(&mut InstanceMaterialData,
+        &mut Mesh3d)>) {
+    let (instances, cube_width, cube_height, cube_depth) = load_pcd_file(&pcd_file_info.areas[pcd_file_info.area_num as usize - 1]);
+    let new_mesh = meshes.add(Cuboid::new(cube_width, cube_height, cube_depth));
+    if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
+        instance_data.instances = instances;
+        mesh3d.0 = new_mesh;
+        // println!("213qqq")
+    }
+}
+
+fn load_pcd_file(area: &Vec<MyPoint>) -> (Vec<InstanceData>, f32, f32, f32) {
+    // let areas = read_and_process_pcd_file(path);
     // let areas = get_file_areas(&pcd_data);
 
     let mut instances = Vec::new();
 
     // let points = get_area_points(pcd_data, &areas[0]);
-    let points = &areas[0];
-    println!("{:?}", get_area_center(&points));
-    println!("{:?}", points.len());
+    // let points = &areas[0];
+    // println!("{:?}", get_area_center(&points));
+    // println!("{:?}", points.len());
     // for point in pcd_data.points {
-    for point in points {
+    for point in area {
         let instance = InstanceData {
             pos_scale: [point.x, point.y, point.z, 15.3],
             color: LinearRgba::from(Color::srgba(1.0, 1.0, 1.0, 1.0)).to_f32_array(), // you can set color later if needed
@@ -395,8 +436,8 @@ fn main() {
         ))
         .insert_resource(OpacityThreshold(0.0)) // Start with no threshold
         .insert_resource(CameraInputAllowed(false))
-        .insert_resource(PCDFilePath(String::new()))
-        .insert_resource(Areas(Vec::new()))
+        // .insert_resource(PCDFilePath(String::new()))
+        // .insert_resource(Areas(Vec::new()))
         .insert_resource(PCDFileInfo::default())
         .add_systems(Startup, voxel_plot_setup)
         .add_systems(Update, update_gui)

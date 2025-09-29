@@ -107,13 +107,16 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
         let y_divisions = divide_by_n(pcd_data.y_min, pcd_data.y_max, chunks_in_one_row);
     
         let mut chunks: Vec<Vec<Vec<MyPoint>>> = vec![vec![vec![]; chunks_in_one_row as usize]; chunks_in_one_row as usize];
-        
+        // println!("{}", chunks.len());
         for point in pcd_data.points.iter_mut() {
             let x_index = get_split_index(point.x, &x_divisions);
             let y_index  = get_split_index(point.y, &y_divisions);
             point.chunk_x_index = x_index;
             point.chunk_y_index = y_index;
+            // println!("{} {} {}", x_index, y_index, chunks_in_one_row);
+            // println!("{:?} {}", x_divisions, point.x);
             chunks[x_index as usize][y_index as usize].push(point.clone());
+            // println!("321");
             // println!("{:?}", point)
         }
         let mut areas: Vec<Vec<MyPoint>> = Vec::new();
@@ -164,9 +167,10 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
 fn divide_by_n(min_value: f32, max_value: f32, n: u32) -> Vec<f32> {
     let step = (max_value - min_value) / n as f32;
     let mut divisions: Vec<f32> = Vec::new();
-    for i in 0..n {
+    for i in 0..n-1 {
         divisions.push(min_value + step * (i + 1) as f32)
     }
+    divisions.push(max_value);
     divisions
 }
 
