@@ -22,6 +22,7 @@ use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
 use hakaton::point_reader::*;
 use hakaton::main_file_splitter::*;
 use hakaton::util::MyPoint;
+use pcd_rs::ValueKind;
 use rfd;
 use bevy_blendy_cameras::{
     BlendyCamerasPlugin, FlyCameraController, FrameEvent,
@@ -59,7 +60,8 @@ pub struct PCDFileInfo {
     pub path: String,
     pub areas: Vec<Vec<MyPoint>>,
     pub area_num: u32,
-    pub area_len: u32
+    pub area_len: u32,
+    pub schema: Vec<(String, ValueKind)>
 }
 
 impl Default for PCDFileInfo {
@@ -68,7 +70,8 @@ impl Default for PCDFileInfo {
             path: String::new(),
             areas: vec![],
             area_num: 1,
-            area_len: 1
+            area_len: 1,
+            schema: vec![]
         }
     }
 }
@@ -408,6 +411,21 @@ fn show_plot(
             // }
             println!("123");
         }
+        ui.horizontal(|ui| {
+            if ui.button("Close without saving").clicked() {
+                pcd_file_info.path = String::new();
+                pcd_file_info.areas = vec![];
+                pcd_file_info.area_num = 1;
+                pcd_file_info.area_len = 1;
+                // println!("cws");
+            }
+            if ui.button("Save").clicked() {
+                println!("save");
+            }
+            if ui.button("Save as").clicked() {
+                println!("Save as")
+            }
+        });
         // if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
         //         instance_data.instances = instances;
         //         mesh3d.0 = new_mesh;

@@ -20,7 +20,10 @@ fn get_xyz_indexes(meta: PcdMeta) -> Result<PCDField, String> {
     let mut pcd_field = PCDField{x:-1, y:-1, z:-1};
     for (i, field) in meta.field_defs.iter().enumerate() {
         match field.name.as_str() {
-            "x" => {pcd_field.x = i.try_into().unwrap()},
+            "x" => {
+                pcd_field.x = i.try_into().unwrap();
+                // pcd_field.
+            },
             "y" => {pcd_field.y = i.try_into().unwrap()},
             "z" => {pcd_field.z = i.try_into().unwrap()},
             _ => {}
