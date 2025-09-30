@@ -118,8 +118,8 @@ fn voxel_plot_setup(
     });
 
     let size = Extent3d {
-        width: 512,
-        height: 512,
+        width: 1024,
+        height: 1024,
         ..default()
     };
 
@@ -158,8 +158,8 @@ fn voxel_plot_setup(
                 target: RenderTarget::Image(ImageRenderTarget::from(image_handle.clone())),
                 ..default()
             },
-            Transform::from_translation(Vec3::new(0.31, 0.98, 20.14238))
-                .looking_at(Vec3::ZERO, Vec3::Y),
+            Transform::from_translation(Vec3::new(80000.54, 80000.27, 80010.28908))
+                .looking_at(Vec3::ZERO, Vec3::Z),
             PanOrbitCamera::default(),
             first_pass_layer,
         ))
@@ -212,8 +212,8 @@ pub fn update_gui(
 
     let ctx = contexts.ctx_mut();
 
-    let width = 300.0;
-    let height = 500.0;
+    let width = 600.0;
+    let height = 700.0;
 
     egui::CentralPanel::default().show(ctx, |ui| {
         if pcd_file_info.path.is_empty() {
@@ -249,7 +249,6 @@ fn start_menu(
     ui.horizontal(|ui| {
         if ui.button("Auto").clicked() {
             println!("Too early");
-            println!("{}", pcd_file_info.path);
         }
         if ui.button("Editor").clicked() {
             println!("Let's go");
@@ -406,12 +405,13 @@ fn load_pcd_file(area: &Vec<MyPoint>) -> (Vec<InstanceData>, f32, f32, f32) {
 
     // let points = get_area_points(pcd_data, &areas[0]);
     // let points = &areas[0];
-    // println!("{:?}", get_area_center(&points));
+    println!("{:?}", get_area_center(&area));
+    println!("{:?}", &area[0]);
     // println!("{:?}", points.len());
     // for point in pcd_data.points {
     for point in area {
         let instance = InstanceData {
-            pos_scale: [point.x, point.y, point.z, 15.3],
+            pos_scale: [point.x, point.y, point.z, 1.3],
             color: LinearRgba::from(Color::srgba(1.0, 1.0, 1.0, 1.0)).to_f32_array(), // you can set color later if needed
         };
 

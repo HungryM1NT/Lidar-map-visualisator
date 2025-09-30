@@ -60,6 +60,7 @@ fn read_file(path: &str) -> Result<PCDData, String> {
             if val.is_nan() {
                 continue 'next_point;
             }
+            let val = val + 80000.;
             if i == xyz_indexes.x as usize {
                 point.x = val;
                 x_min = x_min.min(val);
@@ -101,7 +102,6 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
     let mut chunk_splitter_value = ChunkSplitter::Try(chunks_in_one_row);
     // pcd_data.chunks_in_one_row = chunks_in_one_row;
     
-    println!("{:?}", chunk_splitter_value);
     'chunk_splitter:
     while let ChunkSplitter::Try(chunks_in_one_row) = chunk_splitter_value {
         let x_divisions = divide_by_n(pcd_data.x_min, pcd_data.x_max, chunks_in_one_row);
@@ -116,6 +116,7 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
             point.chunk_y_index = y_index;
             // println!("{} {} {}", x_index, y_index, chunks_in_one_row);
             // println!("{:?} {}", x_divisions, point.x);
+            // println!("{} {} {} {} {:?} {} {:?}", x_index, y_index, chunks_in_one_row, point.x, &x_divisions, point.y, &y_divisions);
             chunks[x_index as usize][y_index as usize].push(point.clone());
             // println!("321");
             // println!("{:?}", point)
@@ -127,7 +128,6 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
         
         let mut areas: Vec<Vec<MyPoint>> = Vec::new();
         for x_haha in 0..chunks_in_one_row - 1 {
-            println!("213123");
             for y_haha in 0..chunks_in_one_row - 1 {
                 let mut area: Vec<MyPoint> = vec![];
                 area.append(&mut chunks[x_haha as usize][y_haha as usize]);
