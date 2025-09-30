@@ -101,6 +101,7 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
     let mut chunk_splitter_value = ChunkSplitter::Try(chunks_in_one_row);
     // pcd_data.chunks_in_one_row = chunks_in_one_row;
     
+    println!("{:?}", chunk_splitter_value);
     'chunk_splitter:
     while let ChunkSplitter::Try(chunks_in_one_row) = chunk_splitter_value {
         let x_divisions = divide_by_n(pcd_data.x_min, pcd_data.x_max, chunks_in_one_row);
@@ -119,9 +120,14 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
             // println!("321");
             // println!("{:?}", point)
         }
+        
+        if chunks_in_one_row == 1 {
+            return vec![chunks[0][0].clone()];
+        }
+        
         let mut areas: Vec<Vec<MyPoint>> = Vec::new();
-    
         for x_haha in 0..chunks_in_one_row - 1 {
+            println!("213123");
             for y_haha in 0..chunks_in_one_row - 1 {
                 let mut area: Vec<MyPoint> = vec![];
                 area.append(&mut chunks[x_haha as usize][y_haha as usize]);
@@ -165,6 +171,9 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
 }
 
 fn divide_by_n(min_value: f32, max_value: f32, n: u32) -> Vec<f32> {
+    if n == 1 {
+        return vec![max_value]
+    }
     let step = (max_value - min_value) / n as f32;
     let mut divisions: Vec<f32> = Vec::new();
     for i in 0..n-1 {

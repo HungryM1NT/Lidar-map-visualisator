@@ -25,7 +25,7 @@ use hakaton::util::MyPoint;
 use rfd;
 
 #[derive(Resource)]
-pub struct OpacityThreshold(pub f32);
+pub struct PointSize(pub f32);
 
 
 #[derive(Deref, Resource)]
@@ -204,7 +204,7 @@ pub fn update_gui(
     mut query: Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
     cube_preview_image: Res<RenderImage>,
     mut contexts: EguiContexts,
-    mut opacity_threshold: ResMut<OpacityThreshold>,
+    mut point_size: ResMut<PointSize>,
     mut cam_input: ResMut<CameraInputAllowed>,
     mut pcd_file_info: ResMut<PCDFileInfo>
 ) {
@@ -231,7 +231,7 @@ pub fn update_gui(
                 height,
                 ui,
                 &mut query,
-                &mut opacity_threshold,
+                &mut point_size,
                 &mut cam_input,
                 &mut pcd_file_info
             )
@@ -276,7 +276,7 @@ fn show_plot(
     mut height: f32,
     ui: &mut Ui,
     query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
-    opacity_threshold: &mut ResMut<OpacityThreshold>,
+    point_size: &mut ResMut<PointSize>,
     cam_input: &mut ResMut<CameraInputAllowed>,
     mut pcd_file_info: &mut ResMut<PCDFileInfo>
 ) {
@@ -349,20 +349,21 @@ fn show_plot(
                 set_new_area(pcd_file_info.area_num + 1, pcd_file_info);
                 visualize_area(pcd_file_info, meshes, query);
             }
-        })
+        });
 
-        // if ui
-        //     .add(egui::Slider::new(&mut opacity_threshold.0, 0.01..=1.0).text("Opacity Threshold"))
-        //     .changed()
-        // {
-        //     if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
-        //         instance_data.instances = instances;
-        //         mesh3d.0 = new_mesh;
-        //         instance_data
-        //             .instances
-        //             .retain(|instance| 1 >= 0);
-        //     }
-        // }
+        if ui
+            .add(egui::Slider::new(&mut point_size.0, 0.01..=100.0).text("Point Size"))
+            .changed()
+        {
+            // if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
+            //     instance_data.instances = instances;
+            //     mesh3d.0 = new_mesh;
+            //     instance_data
+            //         .instances
+            //         .retain(|instance| 1 >= 0);
+            // }
+            println!("123");
+        }
         // if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
         //         instance_data.instances = instances;
         //         mesh3d.0 = new_mesh;
@@ -434,7 +435,7 @@ fn main() {
             VoxelMaterialPlugin,
             PanOrbitCameraPlugin,
         ))
-        .insert_resource(OpacityThreshold(0.0)) // Start with no threshold
+        .insert_resource(PointSize(1.0)) // Start with no threshold
         .insert_resource(CameraInputAllowed(false))
         // .insert_resource(PCDFilePath(String::new()))
         // .insert_resource(Areas(Vec::new()))

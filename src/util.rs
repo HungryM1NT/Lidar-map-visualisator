@@ -1,5 +1,5 @@
 // pub const SPLIT_NUM: u32 = 10;
-pub const POINTS_IN_ONE_CHUNK: u32 = 1_000;
+pub const POINTS_IN_ONE_CHUNK: u32 = 100_000;
 
 pub struct PCDField {
     pub x: i8,
@@ -29,6 +29,7 @@ pub struct PCDData {
     pub chunks_in_one_row: u32,
 }
 
+#[derive(Debug)]
 pub enum ChunkSplitter {
     Ok(Vec<Vec<MyPoint>>),
     Try(u32)
