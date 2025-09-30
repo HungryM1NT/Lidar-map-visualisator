@@ -120,7 +120,7 @@ fn voxel_plot_setup(
     //     // instancing, and that is not taken into account with the built-in frustum culling.
     //     // We must disable the built-in frustum culling by adding the `NoFrustumCulling` marker
     //     // component to avoid incorrect culling.
-    //     NoFrustumCulling,
+        NoFrustumCulling,
     ));
     
 
@@ -181,10 +181,11 @@ fn voxel_plot_setup(
     let camera_entity = commands.spawn((
         Camera3d::default() ,
         // Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-        Transform::from_translation(Vec3::new(98571.54, 84342.27, 165.28908)),
+        Transform::from_translation(Vec3::new(0.54, 0.27, 0.28908)),
         OrbitCameraController {
             button_orbit: MouseButton::Left,
             button_pan: MouseButton::Left,
+            is_enabled: false,
             ..default()
         },
         Camera {
@@ -233,14 +234,14 @@ fn voxel_plot_setup(
 
 }
 
-// fn set_enable_camera_controls_system(
-//     cam_input: Res<CameraInputAllowed>,
-//     mut pan_orbit_query: Query<&mut PanOrbitCamera>,
-// ) {
-//     for mut pan_orbit in pan_orbit_query.iter_mut() {
-//         pan_orbit.enabled = cam_input.0;
-//     }
-// }
+fn set_enable_camera_controls_system(
+    cam_input: Res<CameraInputAllowed>,
+    mut pan_orbit_query: Query<&mut FlyCameraController>,
+) {
+    for mut pan_orbit in pan_orbit_query.iter_mut() {
+        pan_orbit.is_enabled = cam_input.0;
+    }
+}
 
 
 pub fn update_gui(
@@ -487,6 +488,6 @@ fn main() {
         .insert_resource(PCDFileInfo::default())
         .add_systems(Startup, voxel_plot_setup)
         .add_systems(Update, update_gui)
-        // .add_systems(Update, set_enable_camera_controls_system)
+        .add_systems(Update, set_enable_camera_controls_system)
         .run();
 }
