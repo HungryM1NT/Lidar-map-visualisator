@@ -60,7 +60,7 @@ fn read_file(path: &str) -> Result<PCDData, String> {
             if val.is_nan() {
                 continue 'next_point;
             }
-            let val = val + 80000.;
+            // let val = val + 80000.;
             if i == xyz_indexes.x as usize {
                 point.x = val;
                 x_min = x_min.min(val);

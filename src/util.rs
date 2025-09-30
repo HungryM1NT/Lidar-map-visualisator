@@ -1,5 +1,5 @@
 // pub const SPLIT_NUM: u32 = 10;
-pub const POINTS_IN_ONE_CHUNK: u32 = 10_000;
+pub const POINTS_IN_ONE_CHUNK: u32 = 100_000;
 
 pub struct PCDField {
     pub x: i8,

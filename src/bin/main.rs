@@ -17,12 +17,24 @@ use bevy::window::PrimaryWindow;
 use bevy::DefaultPlugins;
 use bevy_egui::egui::{epaint, Ui};
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiUserTextures};
-use bevy_panorbit_camera::{ActiveCameraData, PanOrbitCamera, PanOrbitCameraPlugin};
+// use bevy_panorbit_camera::{ActiveCameraData, PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
 use hakaton::point_reader::*;
 use hakaton::main_file_splitter::*;
 use hakaton::util::MyPoint;
 use rfd;
+use bevy_blendy_cameras::{
+    BlendyCamerasPlugin, FlyCameraController, FrameEvent,
+    OrbitCameraController, SwitchProjection, SwitchToFlyController,
+    SwitchToOrbitController, Viewpoint, ViewpointEvent,
+};
+use bevy::input::{keyboard::{KeyboardInput, KeyCode}, mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},};
+
+use bevy::core_pipeline::core_3d::Camera3d;
+use bevy::input::ButtonInput;
+use bevy::input::mouse::MouseButton;
+use bevy_blendy_cameras::ActiveCameraData;
+use bevy::prelude::Entity;
 
 #[derive(Resource)]
 pub struct PointSize(pub f32);
@@ -67,6 +79,7 @@ fn voxel_plot_setup(
     mut images: ResMut<Assets<Image>>,
     mut active_cam: ResMut<ActiveCameraData>,
     windows: Query<&Window, With<PrimaryWindow>>,
+    query: Query<Entity, With<Window>>,
     mut egui_user_textures: ResMut<EguiUserTextures>,
 ) {
     println!("213");
@@ -149,22 +162,51 @@ fn voxel_plot_setup(
     // TODO: WTF This specifies the layer used for the first pass, which will be attached to the first pass camera and cube.
     let first_pass_layer = RenderLayers::layer(0);
 
-    let pan_orbit_id = commands
-        .spawn((
-            Camera {
-                // render before the "main pass" camera
-                clear_color: ClearColorConfig::Custom(Color::srgba(1.0, 1.0, 1.0, 0.0)),
-                order: -1,
-                target: RenderTarget::Image(ImageRenderTarget::from(image_handle.clone())),
-                ..default()
-            },
-            Transform::from_translation(Vec3::new(80000.54, 80000.27, 80010.28908))
-                .looking_at(Vec3::ZERO, Vec3::Z),
-            PanOrbitCamera::default(),
-            first_pass_layer,
-        ))
-        .id();
+    // let pan_orbit_id = commands
+    //     .spawn((
+    //         Camera {
+    //             // render before the "main pass" camera
+    //             clear_color: ClearColorConfig::Custom(Color::srgba(1.0, 1.0, 1.0, 0.0)),
+    //             order: -1,
+    //             target: RenderTarget::Image(ImageRenderTarget::from(image_handle.clone())),
+    //             ..default()
+    //         },
+    //         Transform::from_translation(Vec3::new(80000.54, 80000.27, 80010.28908))
+    //             .looking_at(Vec3::ZERO, Vec3::Z),
+    //         PanOrbitCamera::default(),
+    //         first_pass_layer,
+    //     ))
+    //     .id();
     
+    let camera_entity = commands.spawn((
+        Camera3d::default() ,
+        // Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
+        Transform::from_translation(Vec3::new(98571.54, 84342.27, 165.28908)),
+        OrbitCameraController {
+            button_orbit: MouseButton::Left,
+            button_pan: MouseButton::Left,
+            ..default()
+        },
+        Camera {
+            // render before the "main pass" camera
+            clear_color: ClearColorConfig::Custom(Color::srgba(1.0, 1.0, 1.0, 0.0)),
+            order: -1,
+            target: RenderTarget::Image(ImageRenderTarget::from(image_handle.clone())),
+            ..default()
+        },
+        FlyCameraController {
+            key_move_forward:KeyCode::KeyW,
+            key_move_backward:KeyCode::KeyS,
+            key_move_left:KeyCode::KeyA,
+            key_move_right:KeyCode::KeyD,
+            key_move_down:KeyCode::KeyQ,
+            key_move_up:KeyCode::KeyE,
+            button_rotate:MouseButton::Left,
+            is_enabled: true,
+            ..default()
+        },
+        first_pass_layer
+    )).id();
 
     
     // Set up manual override of PanOrbitCamera. Note that this must run after PanOrbitCameraPlugin
@@ -174,10 +216,11 @@ fn voxel_plot_setup(
     let primary_window = windows
         .single()
         .expect("There is only ever one primary window");
+    let window_entity = query.single().expect("There is only ever one primary window");
     active_cam.set_if_neq(ActiveCameraData {
         // Set the entity to the entity ID of the camera you want to control. In this case, it's
         // the inner (first pass) cube that is rendered to the texture/image.
-        entity: Some(pan_orbit_id),
+        entity: Some(camera_entity),
         // What you set these values to will depend on your use case, but generally you want the
         // viewport size to match the size of the render target (image, viewport), and the window
         // size to match the size of the window that you are interacting with.
@@ -185,18 +228,19 @@ fn voxel_plot_setup(
         window_size: Some(Vec2::new(primary_window.width(), primary_window.height())),
         // Setting manual to true ensures PanOrbitCameraPlugin will not overwrite this resource
         manual: true,
+        window_entity: None
     });
 
 }
 
-fn set_enable_camera_controls_system(
-    cam_input: Res<CameraInputAllowed>,
-    mut pan_orbit_query: Query<&mut PanOrbitCamera>,
-) {
-    for mut pan_orbit in pan_orbit_query.iter_mut() {
-        pan_orbit.enabled = cam_input.0;
-    }
-}
+// fn set_enable_camera_controls_system(
+//     cam_input: Res<CameraInputAllowed>,
+//     mut pan_orbit_query: Query<&mut PanOrbitCamera>,
+// ) {
+//     for mut pan_orbit in pan_orbit_query.iter_mut() {
+//         pan_orbit.enabled = cam_input.0;
+//     }
+// }
 
 
 pub fn update_gui(
@@ -433,7 +477,8 @@ fn main() {
                 enable_multipass_for_primary_context: false,
             },
             VoxelMaterialPlugin,
-            PanOrbitCameraPlugin,
+            // PanOrbitCameraPlugin,
+            BlendyCamerasPlugin,
         ))
         .insert_resource(PointSize(1.0)) // Start with no threshold
         .insert_resource(CameraInputAllowed(false))
@@ -442,6 +487,6 @@ fn main() {
         .insert_resource(PCDFileInfo::default())
         .add_systems(Startup, voxel_plot_setup)
         .add_systems(Update, update_gui)
-        .add_systems(Update, set_enable_camera_controls_system)
+        // .add_systems(Update, set_enable_camera_controls_system)
         .run();
 }
