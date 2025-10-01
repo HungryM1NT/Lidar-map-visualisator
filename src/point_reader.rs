@@ -16,7 +16,7 @@ fn field_to_value(field: &Field) -> f32 {
     }
 }
 
-fn get_xyz_indexes(meta: PcdMeta) -> Result<PCDField, String> {
+fn get_xyz_indexes(meta: &PcdMeta) -> Result<PCDField, String> {
     let mut pcd_field = PCDField{x:-1, y:-1, z:-1, x_type: None, y_type: None, z_type: None};
     for (i, field) in meta.field_defs.iter().enumerate() {
         match field.name.as_str() {
@@ -45,8 +45,10 @@ fn read_file(path: &str) -> Result<PCDData, String> {
     let reader = DynReader::open(path).unwrap();
 
     let meta = reader.meta().clone();
-    let pcd_field = get_xyz_indexes(meta).unwrap();
+    let pcd_field = get_xyz_indexes(&meta).unwrap();
     let types = [pcd_field.x_type.unwrap(), pcd_field.y_type.unwrap(), pcd_field.z_type.unwrap()];
+    let viewpoint = meta.viewpoint;
+    let data_kind = meta.data;
 
     let mut points: Vec<MyPoint> = Vec::new();
     let file_points: Vec<_> = reader.collect::<Result<_, _>>().unwrap();
@@ -89,13 +91,13 @@ fn read_file(path: &str) -> Result<PCDData, String> {
         points.push(point);
         index += 1;
     }
-    Ok(PCDData { points, x_min, x_max, y_min, y_max, z_min, z_max, chunks_in_one_row: 1, types})
+    Ok(PCDData { points, x_min, x_max, y_min, y_max, z_min, z_max, chunks_in_one_row: 1, types, viewpoint, data_kind})
 }
 
-pub fn read_and_process_pcd_file(path: &str) -> AreasWithTypes {
+pub fn read_and_process_pcd_file(path: &str) -> AreasWithMeta {
     let mut pcd_data = read_file(path).unwrap();
     let areas = split_to_chunks(&mut pcd_data);
-    AreasWithTypes { areas, types: pcd_data.types }
+    AreasWithMeta { areas, types: pcd_data.types, viewpoint: pcd_data.viewpoint, data_kind: pcd_data.data_kind }
 
 
 

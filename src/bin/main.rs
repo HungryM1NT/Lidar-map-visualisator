@@ -21,8 +21,9 @@ use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiUserTextures};
 use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
 use hakaton::point_reader::*;
 use hakaton::main_file_splitter::*;
-use hakaton::util::MyPoint;
-use pcd_rs::ValueKind;
+use hakaton::util::{AreasWithMeta, MyPoint};
+use hakaton::point_writer::*;
+use pcd_rs::{ValueKind, ViewPoint};
 use rfd;
 use bevy_blendy_cameras::{
     BlendyCamerasPlugin, FlyCameraController, FrameEvent,
@@ -58,20 +59,24 @@ pub struct Areas(pub Vec<Vec<MyPoint>>);
 #[derive(Resource)]
 pub struct PCDFileInfo {
     pub path: String,
-    pub areas: Vec<Vec<MyPoint>>,
+    // pub areas: Vec<Vec<MyPoint>>,
     pub area_num: u32,
     pub area_len: u32,
-    pub types: [ValueKind; 3],
+    // pub types: [ValueKind; 3],
+    // pub viewpoint: ViewPoint,
+    pub areas_with_meta: AreasWithMeta
 }
 
 impl Default for PCDFileInfo {
     fn default() -> Self {
         PCDFileInfo {
             path: String::new(),
-            areas: vec![],
+            // areas: vec![],
             area_num: 1,
             area_len: 1,
-            types: [ValueKind::F32; 3],
+            areas_with_meta: AreasWithMeta { areas: vec![], types: [ValueKind::F32; 3], viewpoint: ViewPoint::default(), data_kind: pcd_rs::DataKind::Ascii }
+            // types: [ValueKind::F32; 3],
+            // viewpoint: ViewPoint::default(),
         }
     }
 }
@@ -79,10 +84,11 @@ impl Default for PCDFileInfo {
 impl PCDFileInfo {
     fn clear(&mut self) {
         self.path = String::new();
-        self.areas = vec![];
+        // self.areas = vec![];
         self.area_num = 1;
         self.area_len = 1;
-        self.types = [ValueKind::F32; 3];
+        // self.types = [ValueKind::F32; 3];
+        self.areas_with_meta = AreasWithMeta { areas: vec![], types: [ValueKind::F32; 3], viewpoint: ViewPoint::default(), data_kind: pcd_rs::DataKind::Ascii }
     }
 }
 
@@ -270,8 +276,8 @@ pub fn update_gui(
 
     let ctx = contexts.ctx_mut();
 
-    let width = 600.0;
-    let height = 700.0;
+    let width = 500.0;
+    let height = 600.0;
 
     egui::CentralPanel::default().show(ctx, |ui| {
         if pcd_file_info.path.is_empty() {
@@ -313,10 +319,12 @@ fn start_menu(
             if let Some(path) = rfd::FileDialog::new().pick_file() {
                 let test = Some(path.display().to_string());
                 pcd_file_info.path = test.unwrap();
-                let areas_with_types = read_and_process_pcd_file(&pcd_file_info.path);
-                pcd_file_info.areas = areas_with_types.areas;
-                pcd_file_info.types = areas_with_types.types;
-                pcd_file_info.area_len = pcd_file_info.areas.len() as u32;
+                let areas_with_meta = read_and_process_pcd_file(&pcd_file_info.path);
+                // pcd_file_info.areas = areas_with_types.areas;
+                // pcd_file_info.types = areas_with_types.types;
+                // pcd_file_info.viewpoint = areas_with_types.viewpoint;
+                pcd_file_info.areas_with_meta = areas_with_meta;
+                pcd_file_info.area_len = pcd_file_info.areas_with_meta.areas.len() as u32;
                     // println!("{:?}", areas.0);
                     // println!("{:?}", test);
                     //     let (instances, cube_width, cube_height, cube_depth) =
@@ -434,6 +442,7 @@ fn show_plot(
                 // println!("cws");
             }
             if ui.button("Save").clicked() {
+                write_into_file(pcd_file_info.path.clone(), pcd_file_info.areas_with_meta.clone());
                 println!("save");
             }
             if ui.button("Save as").clicked() {
@@ -465,7 +474,7 @@ fn visualize_area(
     meshes: &mut ResMut<Assets<Mesh>>,
     query: &mut Query<(&mut InstanceMaterialData,
         &mut Mesh3d)>) {
-    let (instances, cube_width, cube_height, cube_depth) = load_pcd_file(&pcd_file_info.areas[pcd_file_info.area_num as usize - 1]);
+    let (instances, cube_width, cube_height, cube_depth) = load_pcd_file(&pcd_file_info.areas_with_meta.areas[pcd_file_info.area_num as usize - 1]);
     let new_mesh = meshes.add(Cuboid::new(cube_width, cube_height, cube_depth));
     if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
         instance_data.instances = instances;
