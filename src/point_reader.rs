@@ -17,15 +17,21 @@ fn field_to_value(field: &Field) -> f32 {
 }
 
 fn get_xyz_indexes(meta: PcdMeta) -> Result<PCDField, String> {
-    let mut pcd_field = PCDField{x:-1, y:-1, z:-1};
+    let mut pcd_field = PCDField{x:-1, y:-1, z:-1, x_type: None, y_type: None, z_type: None};
     for (i, field) in meta.field_defs.iter().enumerate() {
         match field.name.as_str() {
             "x" => {
                 pcd_field.x = i.try_into().unwrap();
-                // pcd_field.
+                pcd_field.x_type = Some(field.kind);
             },
-            "y" => {pcd_field.y = i.try_into().unwrap()},
-            "z" => {pcd_field.z = i.try_into().unwrap()},
+            "y" => {
+                pcd_field.y = i.try_into().unwrap();
+                pcd_field.y_type = Some(field.kind);
+            },
+            "z" => {
+                pcd_field.z = i.try_into().unwrap();
+                pcd_field.z_type = Some(field.kind);
+            },
             _ => {}
         }
     }
@@ -39,7 +45,8 @@ fn read_file(path: &str) -> Result<PCDData, String> {
     let reader = DynReader::open(path).unwrap();
 
     let meta = reader.meta().clone();
-    let xyz_indexes = get_xyz_indexes(meta).unwrap();
+    let pcd_field = get_xyz_indexes(meta).unwrap();
+    let types = [pcd_field.x_type.unwrap(), pcd_field.y_type.unwrap(), pcd_field.z_type.unwrap()];
 
     let mut points: Vec<MyPoint> = Vec::new();
     let file_points: Vec<_> = reader.collect::<Result<_, _>>().unwrap();
@@ -64,15 +71,15 @@ fn read_file(path: &str) -> Result<PCDData, String> {
                 continue 'next_point;
             }
             // let val = val + 80000.;
-            if i == xyz_indexes.x as usize {
+            if i == pcd_field.x as usize {
                 point.x = val;
                 x_min = x_min.min(val);
                 x_max = x_max.max(val);
-            } else if i == xyz_indexes.y as usize {
+            } else if i == pcd_field.y as usize {
                 point.y = val;
                 y_min = y_min.min(val);
                 y_max = y_max.max(val);
-            } else if i == xyz_indexes.z as usize {
+            } else if i == pcd_field.z as usize {
                 point.z = val;
                 z_min = z_min.min(val);
                 z_max = z_max.max(val);
@@ -82,12 +89,14 @@ fn read_file(path: &str) -> Result<PCDData, String> {
         points.push(point);
         index += 1;
     }
-    Ok(PCDData { points, x_min, x_max, y_min, y_max, z_min, z_max, chunks_in_one_row: 1 })
+    Ok(PCDData { points, x_min, x_max, y_min, y_max, z_min, z_max, chunks_in_one_row: 1, types})
 }
 
-pub fn read_and_process_pcd_file(path: &str) -> Vec<Vec<MyPoint>> {
+pub fn read_and_process_pcd_file(path: &str) -> AreasWithTypes {
     let mut pcd_data = read_file(path).unwrap();
-    split_to_chunks(&mut pcd_data)
+    let areas = split_to_chunks(&mut pcd_data);
+    AreasWithTypes { areas, types: pcd_data.types }
+
 
 
     // println!("{} {} {} {} {} {}", x_min, y_min, z_min, x_max, y_max, z_max);

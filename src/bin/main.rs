@@ -61,7 +61,7 @@ pub struct PCDFileInfo {
     pub areas: Vec<Vec<MyPoint>>,
     pub area_num: u32,
     pub area_len: u32,
-    pub schema: Vec<(String, ValueKind)>
+    pub types: [ValueKind; 3],
 }
 
 impl Default for PCDFileInfo {
@@ -71,8 +71,18 @@ impl Default for PCDFileInfo {
             areas: vec![],
             area_num: 1,
             area_len: 1,
-            schema: vec![]
+            types: [ValueKind::F32; 3],
         }
+    }
+}
+
+impl PCDFileInfo {
+    fn clear(&mut self) {
+        self.path = String::new();
+        self.areas = vec![];
+        self.area_num = 1;
+        self.area_len = 1;
+        self.types = [ValueKind::F32; 3];
     }
 }
 
@@ -303,7 +313,9 @@ fn start_menu(
             if let Some(path) = rfd::FileDialog::new().pick_file() {
                 let test = Some(path.display().to_string());
                 pcd_file_info.path = test.unwrap();
-                pcd_file_info.areas = read_and_process_pcd_file(&pcd_file_info.path);
+                let areas_with_types = read_and_process_pcd_file(&pcd_file_info.path);
+                pcd_file_info.areas = areas_with_types.areas;
+                pcd_file_info.types = areas_with_types.types;
                 pcd_file_info.area_len = pcd_file_info.areas.len() as u32;
                     // println!("{:?}", areas.0);
                     // println!("{:?}", test);
@@ -413,10 +425,12 @@ fn show_plot(
         }
         ui.horizontal(|ui| {
             if ui.button("Close without saving").clicked() {
-                pcd_file_info.path = String::new();
-                pcd_file_info.areas = vec![];
-                pcd_file_info.area_num = 1;
-                pcd_file_info.area_len = 1;
+                pcd_file_info.clear();
+                // pcd_file_info.path = String::new();
+                // pcd_file_info.areas = vec![];
+                // pcd_file_info.area_num = 1;
+                // pcd_file_info.area_len = 1;
+                // pcd_file_info.types = [ValueKind::F32; 3];
                 // println!("cws");
             }
             if ui.button("Save").clicked() {

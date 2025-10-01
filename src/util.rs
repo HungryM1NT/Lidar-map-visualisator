@@ -1,10 +1,15 @@
+use pcd_rs::ValueKind;
+
 // pub const SPLIT_NUM: u32 = 10;
 pub const POINTS_IN_ONE_CHUNK: u32 = 100_000;
 
 pub struct PCDField {
     pub x: i8,
     pub y: i8,
-    pub z: i8
+    pub z: i8,
+    pub x_type: Option<ValueKind>,
+    pub y_type: Option<ValueKind>,
+    pub z_type: Option<ValueKind>,
 }
 
 #[derive(Debug, Clone)]
@@ -27,6 +32,12 @@ pub struct PCDData {
     pub z_min: f32,
     pub z_max: f32,
     pub chunks_in_one_row: u32,
+    pub types: [ValueKind; 3]
+}
+
+pub struct AreasWithTypes{
+    pub areas: Vec<Vec<MyPoint>>,
+    pub types: [ValueKind; 3]
 }
 
 #[derive(Debug)]
