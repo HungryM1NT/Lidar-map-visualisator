@@ -67,6 +67,9 @@ pub struct PCDFileInfo {
     pub areas_with_meta: AreasWithMeta
 }
 
+#[derive(Resource)]
+struct MainCameraEntity(Entity);
+
 impl Default for PCDFileInfo {
     fn default() -> Self {
         PCDFileInfo {
@@ -227,7 +230,7 @@ fn voxel_plot_setup(
         },
         first_pass_layer
     )).id();
-
+    commands.insert_resource(MainCameraEntity(camera_entity));
     
     // Set up manual override of PanOrbitCamera. Note that this must run after PanOrbitCameraPlugin
     // is added, otherwise ActiveCameraData will be overwritten.
@@ -236,7 +239,7 @@ fn voxel_plot_setup(
     let primary_window = windows
         .single()
         .expect("There is only ever one primary window");
-    let window_entity = query.single().expect("There is only ever one primary window");
+    // let window_entity = query.single().expect("There is only ever one primary window");
     active_cam.set_if_neq(ActiveCameraData {
         // Set the entity to the entity ID of the camera you want to control. In this case, it's
         // the inner (first pass) cube that is rendered to the texture/image.
@@ -270,7 +273,9 @@ pub fn update_gui(
     mut contexts: EguiContexts,
     mut point_size: ResMut<PointSize>,
     mut cam_input: ResMut<CameraInputAllowed>,
-    mut pcd_file_info: ResMut<PCDFileInfo>
+    mut pcd_file_info: ResMut<PCDFileInfo>,
+    mut main_camera_entity: Res<MainCameraEntity>,
+    mut transforms: Query<&mut Transform>,
 ) {
     let cube_preview_texture_id = contexts.image_id(&cube_preview_image).unwrap();
 
@@ -286,6 +291,8 @@ pub fn update_gui(
                 &mut pcd_file_info,
                 &mut meshes,
                 &mut query,
+                &mut main_camera_entity,
+                &mut transforms
             );
         } else {
             show_plot(
@@ -297,7 +304,9 @@ pub fn update_gui(
                 &mut query,
                 &mut point_size,
                 &mut cam_input,
-                &mut pcd_file_info
+                &mut pcd_file_info,
+                &mut main_camera_entity,
+                &mut transforms
             )
             }
         });
@@ -308,6 +317,9 @@ fn start_menu(
     pcd_file_info: &mut ResMut<PCDFileInfo>,
     meshes: &mut ResMut<Assets<Mesh>>,
     query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
+    // mut camera: Query<&mut Transform, With<Camera>>
+    main_camera_entity: &mut Res<MainCameraEntity>,
+    mut transforms: &mut Query<&mut Transform>,
 ) {
     ui.label("Выбери нужный вариант");
     ui.horizontal(|ui| {
@@ -330,7 +342,14 @@ fn start_menu(
                     //     let (instances, cube_width, cube_height, cube_depth) =
                     //     // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
                     //     load_pcd_file(&test.unwrap());
-                visualize_area(pcd_file_info, meshes, query);
+                visualize_area(pcd_file_info, meshes, query, main_camera_entity, transforms);
+                // println!("{:?}", main_camera_entity.0.);
+
+                // if let Ok(transform) = camera_query.single() {
+                //     ui.label(format!("Current Position: {:?}", transform.translation));
+                // }
+                // let mut ct = camera.single_mut();
+                // ct.translation.x = 10;
             }
         }
     });
@@ -345,7 +364,10 @@ fn show_plot(
     query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
     point_size: &mut ResMut<PointSize>,
     cam_input: &mut ResMut<CameraInputAllowed>,
-    mut pcd_file_info: &mut ResMut<PCDFileInfo>
+    mut pcd_file_info: &mut ResMut<PCDFileInfo>,
+    main_camera_entity: &mut Res<MainCameraEntity>,
+    mut transforms: &mut Query<&mut Transform>,
+    // mut camera: Query<&mut Transform, With<Camera>>
 ) {
     // make space for opacity slider
     height -= 100.0;
@@ -410,11 +432,11 @@ fn show_plot(
             if ui.button("<=").clicked() {
                 // println!("haha")
                 set_new_area(pcd_file_info.area_num - 1, pcd_file_info);
-                visualize_area(pcd_file_info, meshes, query);
+                visualize_area(pcd_file_info, meshes, query, main_camera_entity, transforms);
             }
             if ui.button("=>").clicked() {
                 set_new_area(pcd_file_info.area_num + 1, pcd_file_info);
-                visualize_area(pcd_file_info, meshes, query);
+                visualize_area(pcd_file_info, meshes, query, main_camera_entity, transforms);
             }
         });
 
@@ -472,14 +494,23 @@ fn set_new_area(n: u32, mut pcd_file_info: &mut ResMut<PCDFileInfo>) {
 fn visualize_area(
     mut pcd_file_info: &mut ResMut<PCDFileInfo>,
     meshes: &mut ResMut<Assets<Mesh>>,
-    query: &mut Query<(&mut InstanceMaterialData,
-        &mut Mesh3d)>) {
-    let (instances, cube_width, cube_height, cube_depth) = load_pcd_file(&pcd_file_info.areas_with_meta.areas[pcd_file_info.area_num as usize - 1]);
+    query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
+    main_camera_entity: &mut Res<MainCameraEntity>,
+    mut transforms: &mut Query<&mut Transform>,) {
+    let area = &pcd_file_info.areas_with_meta.areas[pcd_file_info.area_num as usize - 1];
+    let (instances, cube_width, cube_height, cube_depth) = load_pcd_file(&area);
     let new_mesh = meshes.add(Cuboid::new(cube_width, cube_height, cube_depth));
     if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
         instance_data.instances = instances;
         mesh3d.0 = new_mesh;
         // println!("213qqq")
+    }
+    if let Ok(mut transform) = transforms.get_mut(main_camera_entity.0) {
+        // println!("{}", transform.translation)
+        let center = get_area_center(area);
+        transform.translation = center;
+        
+        
     }
 }
 
@@ -491,8 +522,8 @@ fn load_pcd_file(area: &Vec<MyPoint>) -> (Vec<InstanceData>, f32, f32, f32) {
 
     // let points = get_area_points(pcd_data, &areas[0]);
     // let points = &areas[0];
-    println!("{:?}", get_area_center(&area));
-    println!("{:?}", &area[0]);
+    // println!("{:?}", get_area_center(&area));
+    // println!("{:?}", &area[0]);
     // println!("{:?}", points.len());
     // for point in pcd_data.points {
     for point in area {

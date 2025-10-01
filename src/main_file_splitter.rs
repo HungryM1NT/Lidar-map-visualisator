@@ -1,3 +1,7 @@
+use std::f32::INFINITY;
+
+use bevy::math::Vec3;
+
 use crate::util::*;
 
 // All areas contain 2x2 chunks
@@ -57,17 +61,26 @@ pub fn get_area_points(pcd_data: PCDData, area: &Area) -> Vec<MyPoint> {
     area_points
 }
 
-pub fn get_area_center(area_points: &Vec<MyPoint>) -> [f32; 3] {
-    let mut x_sum = 0.;
-    let mut y_sum = 0.;
-    let mut z_sum = 0.;
-    let n = area_points.len() as f32;
+pub fn get_area_center(area_points: &Vec<MyPoint>) -> Vec3 {
+    let mut x_min: f32 = INFINITY;
+    let mut x_max: f32 = -INFINITY;
+    let mut y_min: f32 = INFINITY;
+    let mut y_max: f32 = -INFINITY;
+    let mut z_min: f32 = INFINITY;
+    let mut z_max: f32 = -INFINITY;
     for point in area_points {
-        x_sum += point.x;
-        y_sum += point.y;
-        z_sum += point.z;
+        x_min = x_min.min(point.x);
+        x_max = x_max.max(point.x);
+        y_min = y_min.min(point.y);
+        y_max = y_max.max(point.y);
+        z_min = z_min.min(point.z);
+        z_max = z_max.max(point.z);
     }
-    [x_sum / n, y_sum / n, z_sum / n]
+    let x_mid = (x_max + x_min) / 2.;
+    let y_mid = (y_max + y_min) / 2.;
+    let z_mid = (z_max + z_min) / 2.;
+    // [x_sum / n, y_sum / n, z_sum / n]
+    Vec3{x: x_mid, y: y_mid, z: z_mid}
 }
 
 // fn main() {
