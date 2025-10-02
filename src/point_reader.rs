@@ -1,20 +1,8 @@
-use std::{any::Any, f32::{INFINITY, NAN}};
+use std::f32::INFINITY;
 
-use pcd_rs::{DynReader, Field, PcdMeta, ValueKind};
+use pcd_rs::{DynReader, PcdMeta};
 use crate::util::*;
 
-fn field_to_value(field: &Field) -> f32 {
-    match field.kind() {
-        ValueKind::F32 => {field.to_value::<f32>().unwrap() as f32},
-        ValueKind::F64 => {field.to_value::<f64>().unwrap() as f32},
-        ValueKind::I8 => {field.to_value::<i8>().unwrap() as f32},
-        ValueKind::I16 => {field.to_value::<i16>().unwrap() as f32},
-        ValueKind::I32 => {field.to_value::<i32>().unwrap() as f32},
-        ValueKind::U8 => {field.to_value::<u8>().unwrap() as f32},
-        ValueKind::U16 => {field.to_value::<u16>().unwrap() as f32},
-        ValueKind::U32 => {field.to_value::<u32>().unwrap() as f32},
-    }
-}
 
 fn get_xyz_indexes(meta: &PcdMeta) -> Result<PCDField, String> {
     let mut pcd_field = PCDField{x:-1, y:-1, z:-1, x_type: None, y_type: None, z_type: None};
@@ -66,13 +54,10 @@ fn read_file(path: &str) -> Result<PCDData, String> {
         let mut point = MyPoint{x:0.0, y:0.0, z:0.0, index, chunk_x_index: 0, chunk_y_index: 0, box_index: 0};
 
         for (i, field) in file_point.0.iter().enumerate() {
-            // let val = field.to_value::<f32>();
-            // println!("{:?}", val);
             let val = field_to_value(field);
             if val.is_nan() {
                 continue 'next_point;
             }
-            // let val = val + 80000.;
             if i == pcd_field.x as usize {
                 point.x = val;
                 x_min = x_min.min(val);
@@ -87,7 +72,6 @@ fn read_file(path: &str) -> Result<PCDData, String> {
                 z_max = z_max.max(val);
             }
         }
-        // println!("{:?}", point);
         points.push(point);
         index += 1;
     }
@@ -98,14 +82,6 @@ pub fn read_and_process_pcd_file(path: &str) -> AreasWithMeta {
     let mut pcd_data = read_file(path).unwrap();
     let areas = split_to_chunks(&mut pcd_data);
     AreasWithMeta { areas, types: pcd_data.types, viewpoint: pcd_data.viewpoint, data_kind: pcd_data.data_kind }
-
-
-
-    // println!("{} {} {} {} {} {}", x_min, y_min, z_min, x_max, y_max, z_max);
-    // set_points_chunks(&mut points, [x_min, x_max, y_min, y_max, z_min, z_max]);
-
-    // println!("{:?}", points);
-    // pcd_data
 }
 
 fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
@@ -114,7 +90,6 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
     let chunks_in_one_row = (chunks_num as f32).sqrt() as u32 + 1;
 
     let mut chunk_splitter_value = ChunkSplitter::Try(chunks_in_one_row);
-    // pcd_data.chunks_in_one_row = chunks_in_one_row;
     
     'chunk_splitter:
     while let ChunkSplitter::Try(chunks_in_one_row) = chunk_splitter_value {
@@ -122,18 +97,13 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
         let y_divisions = divide_by_n(pcd_data.y_min, pcd_data.y_max, chunks_in_one_row);
     
         let mut chunks: Vec<Vec<Vec<MyPoint>>> = vec![vec![vec![]; chunks_in_one_row as usize]; chunks_in_one_row as usize];
-        // println!("{}", chunks.len());
+
         for point in pcd_data.points.iter_mut() {
             let x_index = get_split_index(point.x, &x_divisions);
             let y_index  = get_split_index(point.y, &y_divisions);
             point.chunk_x_index = x_index;
             point.chunk_y_index = y_index;
-            // println!("{} {} {}", x_index, y_index, chunks_in_one_row);
-            // println!("{:?} {}", x_divisions, point.x);
-            // println!("{} {} {} {} {:?} {} {:?}", x_index, y_index, chunks_in_one_row, point.x, &x_divisions, point.y, &y_divisions);
             chunks[x_index as usize][y_index as usize].push(point.clone());
-            // println!("321");
-            // println!("{:?}", point)
         }
         
         if chunks_in_one_row == 1 {
@@ -148,7 +118,7 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
                 area.append(&mut chunks[(x_haha + 1) as usize][y_haha as usize]);
                 area.append(&mut chunks[x_haha as usize][(y_haha + 1) as usize]);
                 area.append(&mut chunks[(x_haha + 1) as usize][(y_haha + 1) as usize]);
-                // println!("{}", area.len())
+
                 if area.len() as u32 > POINTS_IN_ONE_CHUNK * 4 {
                     chunk_splitter_value = ChunkSplitter::Try((chunks_in_one_row as f32 * 1.2) as u32 + 1);
                     continue 'chunk_splitter;
@@ -164,24 +134,7 @@ fn split_to_chunks(pcd_data: &mut PCDData) -> Vec<Vec<MyPoint>> {
         
         
     }
-    // if let ChunkSplitter::Ok(areas) = chunk_splitter_value {
-    //     println!("{}", areas.len());
-    //     // for area in areas {
-    //     //     println!("{}", area.len())
-    //     // }
-    // }
     chunk_splitter_value.unwrap()
-
-    // println!("{:?}", chunks);
-    // let temp_x = (pcd_data.x_max - pcd_data.x_min) / chunks_in_one_row as f32 * 2. + pcd_data.x_min;
-    // let temp_y = (pcd_data.y_max - pcd_data.y_min) / chunks_in_one_row as f32 * 2. + pcd_data.y_min;
-    // println!("{} ", chunks_num);
-    // println!("{} {} {} {}", pcd_data.x_min, temp_x, pcd_data.y_min, temp_y);
-    // println!("{} {}", pcd_data.z_min, pcd_data.z_max);
-
-
-    // let [x_divisions, y_divisions] = get_chunk_divisions([PCDData.x_min, PCDData.x_max, PCDData.y_min, PCDData.y_max]);
-    
 }
 
 fn divide_by_n(min_value: f32, max_value: f32, n: u32) -> Vec<f32> {
@@ -197,20 +150,6 @@ fn divide_by_n(min_value: f32, max_value: f32, n: u32) -> Vec<f32> {
     divisions
 }
 
-
-// fn set_points_chunks(borders: [f32; 6]) {
-//     let [x_divisions, y_divisions, z_divisions] = get_divisions(borders);
-//     // println!("{:?}", x_divisions);
-//     for point in points.iter_mut() {
-//         let chunk_x = get_xyz_index(point.x, &x_divisions) as u32;
-//         let chunk_y = get_xyz_index(point.y, &y_divisions) as u32;
-//         let chunk_z = get_xyz_index(point.z, &z_divisions) as u32;
-//         // println!("{} {} {}", chunk_x, chunk_y, chunk_z)
-//         let chunk_num = SPLIT_NUM.pow(2) * chunk_x + SPLIT_NUM * chunk_y + chunk_z;
-//         point.chunk = chunk_num;
-//     }
-// }
-
 fn get_split_index(point_val: f32, divisions: &Vec<f32>) -> u32 {
     let mut chunk_index = 0;
     for div in divisions {
@@ -222,9 +161,3 @@ fn get_split_index(point_val: f32, divisions: &Vec<f32>) -> u32 {
     }
     return chunk_index as u32;
 }
-
-// fn main() {
-//     let path = "./assets/hak_big/hak_ascii.pcd";
-//     let point_list = read_and_process_pcd_file(path);
-//     // println!("{:?}", point_list);
-// }

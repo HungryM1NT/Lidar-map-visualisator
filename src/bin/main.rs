@@ -17,23 +17,18 @@ use bevy::window::PrimaryWindow;
 use bevy::DefaultPlugins;
 use bevy_egui::egui::{epaint, Ui};
 use bevy_egui::{egui, EguiContexts, EguiPlugin, EguiUserTextures};
-// use bevy_panorbit_camera::{ActiveCameraData, PanOrbitCamera, PanOrbitCameraPlugin};
 use bevy_voxel_plot::{InstanceData, InstanceMaterialData, VoxelMaterialPlugin};
 use hakaton::point_reader::*;
-use hakaton::main_file_splitter::*;
-use hakaton::util::{AreasWithMeta, MyPoint};
+use hakaton::util::*;
 use hakaton::point_writer::*;
 use pcd_rs::{ValueKind, ViewPoint};
 use rfd;
 use bevy_blendy_cameras::{
-    BlendyCamerasPlugin, FlyCameraController, FrameEvent,
-    OrbitCameraController, SwitchProjection, SwitchToFlyController,
-    SwitchToOrbitController, Viewpoint, ViewpointEvent,
+    BlendyCamerasPlugin, FlyCameraController, OrbitCameraController
 };
-use bevy::input::{keyboard::{KeyboardInput, KeyCode}, mouse::{AccumulatedMouseMotion, AccumulatedMouseScroll},};
+use bevy::input::keyboard::KeyCode;
 
 use bevy::core_pipeline::core_3d::Camera3d;
-use bevy::input::ButtonInput;
 use bevy::input::mouse::MouseButton;
 use bevy_blendy_cameras::ActiveCameraData;
 use bevy::prelude::Entity;
@@ -57,29 +52,23 @@ pub struct PCDFilePath(pub String);
 pub struct Areas(pub Vec<Vec<MyPoint>>);
 
 #[derive(Resource)]
-pub struct PCDFileInfo {
-    pub path: String,
-    // pub areas: Vec<Vec<MyPoint>>,
-    pub area_num: u32,
-    pub area_len: u32,
-    // pub types: [ValueKind; 3],
-    // pub viewpoint: ViewPoint,
-    pub areas_with_meta: AreasWithMeta
-}
+pub struct MainCameraEntity(Entity);
 
 #[derive(Resource)]
-struct MainCameraEntity(Entity);
+pub struct PCDFileInfo {
+    pub path: String,
+    pub area_num: u32,
+    pub area_len: u32,
+    pub areas_with_meta: AreasWithMeta
+}
 
 impl Default for PCDFileInfo {
     fn default() -> Self {
         PCDFileInfo {
             path: String::new(),
-            // areas: vec![],
             area_num: 1,
             area_len: 1,
             areas_with_meta: AreasWithMeta { areas: vec![], types: [ValueKind::F32; 3], viewpoint: ViewPoint::default(), data_kind: pcd_rs::DataKind::Ascii }
-            // types: [ValueKind::F32; 3],
-            // viewpoint: ViewPoint::default(),
         }
     }
 }
@@ -87,10 +76,8 @@ impl Default for PCDFileInfo {
 impl PCDFileInfo {
     fn clear(&mut self) {
         self.path = String::new();
-        // self.areas = vec![];
         self.area_num = 1;
         self.area_len = 1;
-        // self.types = [ValueKind::F32; 3];
         self.areas_with_meta = AreasWithMeta { areas: vec![], types: [ValueKind::F32; 3], viewpoint: ViewPoint::default(), data_kind: pcd_rs::DataKind::Ascii }
     }
 }
@@ -101,33 +88,9 @@ fn voxel_plot_setup(
     mut images: ResMut<Assets<Image>>,
     mut active_cam: ResMut<ActiveCameraData>,
     windows: Query<&Window, With<PrimaryWindow>>,
-    query: Query<Entity, With<Window>>,
     mut egui_user_textures: ResMut<EguiUserTextures>,
 ) {
-    println!("213");
-    // let (instances, cube_width, cube_height, cube_depth) =
-    //     // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
-    //     load_pcd_file("./assets/office_ascii.pcd");
-    // let instances: Vec<InstanceData> = instances.into_iter().collect();
-
-    // Sort by opacity (color alpha channel) descending
-    // instances.sort_by(|a, b| {
-    //     b.color[3]
-    //         .partial_cmp(&a.color[3])
-    //         .unwrap_or(std::cmp::Ordering::Equal)
-    // });
-
-    // Truncate to top 2 million most opaque points, more than that is usually not responsive
-    // const MAX_INSTANCES: usize = 2_000_000;
-    // if instances.len() > MAX_INSTANCES {
-    //     instances.truncate(MAX_INSTANCES);
-    // }
-
-    // if instances.len() == MAX_INSTANCES {
-    //     let threshold = instances.last().unwrap().color[3];
-    //     println!("Auto threshold for opacity was: {}", threshold);
-    // }
-
+    println!("[INFO]: Started");
     let empty_instance = InstanceData {
             pos_scale: [0., 0., 0., 0.],
             color: [0., 0., 0., 0.]
@@ -135,20 +98,12 @@ fn voxel_plot_setup(
     commands.spawn((
         Mesh3d(meshes.add(Cuboid::new(0., 0., 0.))),
         InstanceMaterialData { instances: vec![empty_instance] },
-    //     // NOTE: Frustum culling is done based on the Aabb of the Mesh and the GlobalTransform.
-    //     // As the cube is at the origin, if its Aabb moves outside the view frustum, all the
-    //     // instanced cubes will be culled.
-    //     // The InstanceMaterialData contains the 'GlobalTransform' information for this custom
-    //     // instancing, and that is not taken into account with the built-in frustum culling.
-    //     // We must disable the built-in frustum culling by adding the `NoFrustumCulling` marker
-    //     // component to avoid incorrect culling.
         NoFrustumCulling,
     ));
     
-
     commands.insert_resource(AmbientLight {
         color: Color::WHITE,
-        brightness: 2.0, // Increase this to wash out shadows
+        brightness: 2.0,
         affects_lightmapped_meshes: false,
     });
 
@@ -174,36 +129,17 @@ fn voxel_plot_setup(
         ..default()
     };
     
-    // fill image.data with zeroes
     image.resize(size);
 
     let image_handle = images.add(image);
     egui_user_textures.add_image(image_handle.clone());
     commands.insert_resource(RenderImage(image_handle.clone()));
 
-    // TODO: WTF This specifies the layer used for the first pass, which will be attached to the first pass camera and cube.
     let first_pass_layer = RenderLayers::layer(0);
-
-    // let pan_orbit_id = commands
-    //     .spawn((
-    //         Camera {
-    //             // render before the "main pass" camera
-    //             clear_color: ClearColorConfig::Custom(Color::srgba(1.0, 1.0, 1.0, 0.0)),
-    //             order: -1,
-    //             target: RenderTarget::Image(ImageRenderTarget::from(image_handle.clone())),
-    //             ..default()
-    //         },
-    //         Transform::from_translation(Vec3::new(80000.54, 80000.27, 80010.28908))
-    //             .looking_at(Vec3::ZERO, Vec3::Z),
-    //         PanOrbitCamera::default(),
-    //         first_pass_layer,
-    //     ))
-    //     .id();
     
     let camera_entity = commands.spawn((
         Camera3d::default() ,
-        // Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
-        Transform::from_translation(Vec3::new(0.54, 0.27, 0.28908)),
+        Transform::from_translation(Vec3::new(0.0, 0.0, 0.0)),
         OrbitCameraController {
             button_orbit: MouseButton::Left,
             button_pan: MouseButton::Left,
@@ -211,7 +147,6 @@ fn voxel_plot_setup(
             ..default()
         },
         Camera {
-            // render before the "main pass" camera
             clear_color: ClearColorConfig::Custom(Color::srgba(1.0, 1.0, 1.0, 0.0)),
             order: -1,
             target: RenderTarget::Image(ImageRenderTarget::from(image_handle.clone())),
@@ -232,24 +167,14 @@ fn voxel_plot_setup(
     )).id();
     commands.insert_resource(MainCameraEntity(camera_entity));
     
-    // Set up manual override of PanOrbitCamera. Note that this must run after PanOrbitCameraPlugin
-    // is added, otherwise ActiveCameraData will be overwritten.
-    // Note: you probably want to update the `viewport_size` and `window_size` whenever they change,
-    // I haven't done this here for simplicity.
     let primary_window = windows
         .single()
         .expect("There is only ever one primary window");
-    // let window_entity = query.single().expect("There is only ever one primary window");
+
     active_cam.set_if_neq(ActiveCameraData {
-        // Set the entity to the entity ID of the camera you want to control. In this case, it's
-        // the inner (first pass) cube that is rendered to the texture/image.
         entity: Some(camera_entity),
-        // What you set these values to will depend on your use case, but generally you want the
-        // viewport size to match the size of the render target (image, viewport), and the window
-        // size to match the size of the window that you are interacting with.
         viewport_size: Some(Vec2::new(size.width as f32, size.height as f32)),
         window_size: Some(Vec2::new(primary_window.width(), primary_window.height())),
-        // Setting manual to true ensures PanOrbitCameraPlugin will not overwrite this resource
         manual: true,
         window_entity: None
     });
@@ -317,39 +242,26 @@ fn start_menu(
     pcd_file_info: &mut ResMut<PCDFileInfo>,
     meshes: &mut ResMut<Assets<Mesh>>,
     query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
-    // mut camera: Query<&mut Transform, With<Camera>>
     main_camera_entity: &mut Res<MainCameraEntity>,
-    mut transforms: &mut Query<&mut Transform>,
+    transforms: &mut Query<&mut Transform>,
 ) {
     ui.label("Выбери нужный вариант");
     ui.horizontal(|ui| {
         if ui.button("Auto").clicked() {
-            println!("Too early");
+            println!("[WIP]: Auto detecting and deleting");
         }
         if ui.button("Editor").clicked() {
-            println!("Let's go");
             if let Some(path) = rfd::FileDialog::new().pick_file() {
                 let test = Some(path.display().to_string());
                 pcd_file_info.path = test.unwrap();
                 let areas_with_meta = read_and_process_pcd_file(&pcd_file_info.path);
-                // pcd_file_info.areas = areas_with_types.areas;
-                // pcd_file_info.types = areas_with_types.types;
-                // pcd_file_info.viewpoint = areas_with_types.viewpoint;
+
+                println!("[INFO]: PCD file opened");
+                
                 pcd_file_info.areas_with_meta = areas_with_meta;
                 pcd_file_info.area_len = pcd_file_info.areas_with_meta.areas.len() as u32;
-                    // println!("{:?}", areas.0);
-                    // println!("{:?}", test);
-                    //     let (instances, cube_width, cube_height, cube_depth) =
-                    //     // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
-                    //     load_pcd_file(&test.unwrap());
-                visualize_area(pcd_file_info, meshes, query, main_camera_entity, transforms);
-                // println!("{:?}", main_camera_entity.0.);
 
-                // if let Ok(transform) = camera_query.single() {
-                //     ui.label(format!("Current Position: {:?}", transform.translation));
-                // }
-                // let mut ct = camera.single_mut();
-                // ct.translation.x = 10;
+                visualize_area(pcd_file_info, meshes, query, main_camera_entity, transforms);
             }
         }
     });
@@ -364,46 +276,16 @@ fn show_plot(
     query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
     point_size: &mut ResMut<PointSize>,
     cam_input: &mut ResMut<CameraInputAllowed>,
-    mut pcd_file_info: &mut ResMut<PCDFileInfo>,
+    pcd_file_info: &mut ResMut<PCDFileInfo>,
     main_camera_entity: &mut Res<MainCameraEntity>,
-    mut transforms: &mut Query<&mut Transform>,
-    // mut camera: Query<&mut Transform, With<Camera>>
+    transforms: &mut Query<&mut Transform>,
 ) {
-    // make space for opacity slider
     height -= 100.0;
     let available_size = egui::vec2(width.min(height), width.min(height));
-
-    // let (instances, cube_width, cube_height, cube_depth) = load_pcd_file("./assets/office_ascii.pcd");
-    // let (instances, cube_width, cube_height, cube_depth) = generate_dummy_data();
-    // let new_mesh = meshes.add(Cuboid::new(cube_width, cube_height, cube_depth));
-
-    // if pcd_file_path.0.is_empty() {
-    //     ui.label("Выбери нужный вариант");
-    //     ui.horizontal(|ui| {
-    //         if ui.button("Auto").clicked() {
-    //             println!("Too early");
-    //             println!("{}", pcd_file_path.0);
-    //         }
-    //         if ui.button("Editor").clicked() {
-    //             println!("Let's go");
-    //             if let Some(path) = rfd::FileDialog::new().pick_file() {
-    //                     let test = Some(path.display().to_string());
-    //                     pcd_file_path.0 = test.unwrap();
-    //                     // println!("{:?}", test);
-    //                     //     let (instances, cube_width, cube_height, cube_depth) =
-    //                     //     // load_pcd_file("./assets/hak_big/hak_ascii.pcd");
-    //                     //     load_pcd_file(&test.unwrap());
-    //                 }
-    //         }
-    //     });
-    // } else {
-    // }
-    ui.label("text");
     
     ui.vertical(|ui| {
         ui.label("3D Voxel Plot");
 
-        // this is used to only pan / zoom when you are actually clicking inside the texture and not around
         ui.allocate_ui(available_size, |ui| {
             ui.image(egui::load::SizedTexture::new(
                 *cube_preview_texture_id,
@@ -425,12 +307,9 @@ fn show_plot(
             }
         });
 
-        // a simple slider to control the opacity threshold
-        // ui.label("Opacity:");
         ui.label(format!("{}/{}", pcd_file_info.area_num, pcd_file_info.area_len));
         ui.horizontal(|ui| {
             if ui.button("<=").clicked() {
-                // println!("haha")
                 set_new_area(pcd_file_info.area_num - 1, pcd_file_info);
                 visualize_area(pcd_file_info, meshes, query, main_camera_entity, transforms);
             }
@@ -444,44 +323,25 @@ fn show_plot(
             .add(egui::Slider::new(&mut point_size.0, 0.01..=100.0).text("Point Size"))
             .changed()
         {
-            // if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
-            //     instance_data.instances = instances;
-            //     mesh3d.0 = new_mesh;
-            //     instance_data
-            //         .instances
-            //         .retain(|instance| 1 >= 0);
-            // }
-            println!("123");
+            println!("[WIP]: Dynamic point size");
         }
         ui.horizontal(|ui| {
-            if ui.button("Close without saving").clicked() {
+            if ui.button("Close").clicked() {
                 pcd_file_info.clear();
-                // pcd_file_info.path = String::new();
-                // pcd_file_info.areas = vec![];
-                // pcd_file_info.area_num = 1;
-                // pcd_file_info.area_len = 1;
-                // pcd_file_info.types = [ValueKind::F32; 3];
-                // println!("cws");
+                println!("[INFO]: Closed")
             }
             if ui.button("Save").clicked() {
-                write_into_file(pcd_file_info.path.clone(), pcd_file_info.areas_with_meta.clone());
-                println!("save");
+                write_into_file(pcd_file_info.path.clone(), pcd_file_info.areas_with_meta.clone()).unwrap();
+                println!("[INFO]: Saved");
             }
             if ui.button("Save as").clicked() {
-                println!("Save as")
+                println!("[WIP]: Save as");
             }
         });
-        // if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
-        //         instance_data.instances = instances;
-        //         mesh3d.0 = new_mesh;
-        //         instance_data
-        //             .instances.retain(|instance| 1 > 0);
-        //             // .retain(|instance| instance.color[3] >= opacity_threshold.0);
-        //     }
     });
 }
 
-fn set_new_area(n: u32, mut pcd_file_info: &mut ResMut<PCDFileInfo>) {
+fn set_new_area(n: u32, pcd_file_info: &mut ResMut<PCDFileInfo>) {
     if n == 0 {
         pcd_file_info.area_num = pcd_file_info.area_len;
     } else if n <= pcd_file_info.area_len {
@@ -492,21 +352,19 @@ fn set_new_area(n: u32, mut pcd_file_info: &mut ResMut<PCDFileInfo>) {
 }
 
 fn visualize_area(
-    mut pcd_file_info: &mut ResMut<PCDFileInfo>,
+    pcd_file_info: &mut ResMut<PCDFileInfo>,
     meshes: &mut ResMut<Assets<Mesh>>,
     query: &mut Query<(&mut InstanceMaterialData, &mut Mesh3d)>,
     main_camera_entity: &mut Res<MainCameraEntity>,
-    mut transforms: &mut Query<&mut Transform>,) {
+    transforms: &mut Query<&mut Transform>,) {
     let area = &pcd_file_info.areas_with_meta.areas[pcd_file_info.area_num as usize - 1];
     let (instances, cube_width, cube_height, cube_depth) = load_pcd_file(&area);
     let new_mesh = meshes.add(Cuboid::new(cube_width, cube_height, cube_depth));
     if let Ok((mut instance_data, mut mesh3d)) = query.single_mut() {
         instance_data.instances = instances;
         mesh3d.0 = new_mesh;
-        // println!("213qqq")
     }
     if let Ok(mut transform) = transforms.get_mut(main_camera_entity.0) {
-        // println!("{}", transform.translation)
         let center = get_area_center(area);
         transform.translation = center;
         
@@ -515,26 +373,18 @@ fn visualize_area(
 }
 
 fn load_pcd_file(area: &Vec<MyPoint>) -> (Vec<InstanceData>, f32, f32, f32) {
-    // let areas = read_and_process_pcd_file(path);
-    // let areas = get_file_areas(&pcd_data);
 
     let mut instances = Vec::new();
 
-    // let points = get_area_points(pcd_data, &areas[0]);
-    // let points = &areas[0];
-    // println!("{:?}", get_area_center(&area));
-    // println!("{:?}", &area[0]);
-    // println!("{:?}", points.len());
-    // for point in pcd_data.points {
     for point in area {
         let instance = InstanceData {
             pos_scale: [point.x, point.y, point.z, 1.3],
-            color: LinearRgba::from(Color::srgba(1.0, 1.0, 1.0, 1.0)).to_f32_array(), // you can set color later if needed
+            color: LinearRgba::from(Color::srgba(1.0, 1.0, 1.0, 1.0)).to_f32_array(),
         };
 
         instances.push(instance);
     };
-    // Choose a reasonable cube size for rendering
+
     let cube_width = 0.02;
     let cube_height = 0.02;
     let cube_depth = 0.02;
@@ -550,13 +400,10 @@ fn main() {
                 enable_multipass_for_primary_context: false,
             },
             VoxelMaterialPlugin,
-            // PanOrbitCameraPlugin,
             BlendyCamerasPlugin,
         ))
-        .insert_resource(PointSize(1.0)) // Start with no threshold
+        .insert_resource(PointSize(1.0))
         .insert_resource(CameraInputAllowed(false))
-        // .insert_resource(PCDFilePath(String::new()))
-        // .insert_resource(Areas(Vec::new()))
         .insert_resource(PCDFileInfo::default())
         .add_systems(Startup, voxel_plot_setup)
         .add_systems(Update, update_gui)
